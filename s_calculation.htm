@@ -1,37 +1,471 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Price and Quantity Calculator</title>
   <script>
-    function calculateTotal() {
-      var price = parseFloat(document.getElementById('price').value);
-      var quantity = parseInt(document.getElementById('quantity').value);
-      var total = price * quantity;
-      document.getElementById('total').innerHTML = total.toFixed(2);
+    var price, qty, bidSize, consideration;
+
+    function setSellBreakdown(curBuyPrice, curSellPrice) {
+      var consideration = curSellPrice * qty;
+      var otherFee = getOtherFee(consideration);
+      var el;
+
+      el = document.getElementById("s_Price");      
+      el.innerHTML = curSellPrice.toFixed(2);
+      
+      el = document.getElementById("s_Qty");
+      el.innerHTML = qty;
+      
+      el = document.getElementById("s_BidSize");
+      el.innerHTML = bidSize.toFixed(2);           
+      
+      el = document.getElementById("s_Consideration");      
+      el.innerHTML = consideration.toFixed(2);
+            
+      el = document.getElementById("s_Platform"); 
+      el.innerHTML = (otherFee.platform).toFixed(2);
+      
+      el = document.getElementById("s_AdValStamp");
+      el.innerHTML = (otherFee.adValStamp).toFixed(2);
+
+      el = document.getElementById("s_Settlement");
+      el.innerHTML = (otherFee.settlement).toFixed(2);
+      
+      el = document.getElementById("s_FRCLevy");
+      el.innerHTML = (otherFee.frcLevy).toFixed(2);
+
+      el = document.getElementById("s_Trading");
+      el.innerHTML = (otherFee.trading).toFixed(2);
+
+      el = document.getElementById("s_XactLevy");
+      el.innerHTML = (otherFee.xactLevy).toFixed(2);  
+
+      el = document.getElementById("s_OtherTotal");
+      el.innerHTML =(otherFee.total).toFixed(2);
     }
+
+
+    function setMainTable() {
+      // Clear the previous table, if it exists
+      var previousTable = document.getElementById("mainTable");
+      if (previousTable) {
+        previousTable.remove();
+      }
+
+      var previousBottomSection = document.getElementById("bottom-section");
+      if (previousBottomSection) {
+        previousBottomSection.remove();
+      }
+
+      var el_parentDiv = document.createElement("div");
+      el_parentDiv.classList.add("bottom-section");
+      el_parentDiv.id = "bottom-section";
+
+      var maxCol = 11;
+      var maxRow = 150
+      var buyPrice = price;
+   
+      var el_div = document.createElement("div");
+      el_div.classList.add("table-container");
+
+      var el_table = document.createElement("table");
+      el_table.id = "mainTable";
+      el_table.classList.add("mainTable");
+      var el_thead = document.createElement("thead");
+      var el_row = document.createElement("tr");
+      
+      var otherFee = getOtherFee(consideration);
+      
+      var curSellPrice = price + bidSize;
+      for (row = 1; row <= maxRow; row++) {
+        if (row == 1) {
+          //heading
+          for (var col = 0; col < maxCol; col++) {
+            var el_th = document.createElement("th");
+            if (col == 0) {
+              el_th.textContent = "";    // equal to td
+            } else {
+              el_th.textContent = buyPrice.toFixed(2);    // equal to td
+              buyPrice += bidSize; 
+            }        
+            el_row.appendChild(el_th);
+          }
+          el_thead.appendChild(el_row);
+          el_table.appendChild(el_thead);
+        } else  { 
+          //body        
+          var el_row = document.createElement("tr");
+          var curBuyPrice = price;
+          for (var col = 1; col <= maxCol;  col++) {
+            var el_cell = document.createElement("td");
+            el_cell.setAttribute('id', 'r'+ row + "c" + col );
+            if (col == 1 ) {
+              el_cell.textContent = curSellPrice.toFixed(2);
+            } else {
+              el_cell.setAttribute("onmouseover", "setSellBreakdown(" + curBuyPrice +"," + curSellPrice + ")");
+              var buyingCost = getBuyingCost(curBuyPrice, qty);
+              var sellingCost = getSellingCost(curSellPrice, qty);
+
+              var actualGainLoss = sellingCost - buyingCost;
+              var actualGainLossPercent = (sellingCost - buyingCost) / buyingCost * 100;
+              var gainLossPercent = (curSellPrice - curBuyPrice) / curBuyPrice * 100;
+              var outString = actualGainLoss.toFixed(2) + "<BR>" + gainLossPercent.toFixed(2) + "% <BR>" + actualGainLossPercent.toFixed(2) + "%";
+              //var outString = buyingCost.toFixed(2) + "|" + sellingCost.toFixed(2);
+
+              //cell.textContent = outString;
+              el_cell.innerHTML = outString;
+              el_cell.style.textAlign = "center";
+              curBuyPrice += bidSize;
+            }
+            
+            el_row.appendChild(el_cell);
+          }
+          el_table.appendChild(el_row);
+          curSellPrice += bidSize; 
+
+        }
+      }
+      
+      // Append the table to the document body
+      el_parentDiv.appendChild(el_table)
+      document.body.appendChild(el_parentDiv);
+
+    }
+
+
+    function main() {
+      // Prevent form submission
+      event.preventDefault();
+
+      price = document.getElementById("price").value;
+      price = parseFloat(price);
+      qty = document.getElementById("qty").value;
+      qty = parseFloat(qty);
+      bidSize = getBidSize(price);
+      bidSize = parseFloat(bidSize);
+      consideration = price * qty;
+
+      setBreakdownTable(); 
+      setMainTable();
+    }
+
+    function setBreakdownTable() {
+      // Clear the previous table, if it exists
+      var previousTable = document.getElementById("breakdownTable");
+      if (previousTable) {
+        previousTable.remove();
+      }
+
+      var previousTopSection = document.getElementById("top-section");
+      if (previousTopSection) {
+        previousTopSection.remove();
+      }
+
+      var el_div = document.createElement("div");
+      el_div.classList.add("top-section");
+      el_div.id = "top-section";
+
+      var tHeader = ["","Price", "Qty", "BidSize", "Considderation", "Platform",	"AdValStamp",	"Settlement",	"FRCLevy",	"Trading",	"XactLevy", " OtherTotal"]; 
+      var sellId = ["s_title","s_Price", "s_Qty", "s_BidSize", "s_Consideration", "s_Platform","s_AdValStamp",	
+                    "s_Settlement",	"s_FRCLevy",	"s_Trading",	"s_XactLevy", "s_OtherTotal"];
+
+      var el_table = document.createElement("table");
+      el_table.id = "breakdownTable";      
+      el_table.classList.add("breakdownTable");
+    
+      var thead = document.createElement("thead");
+      var tr = document.createElement("tr");      
+
+      var consideration = price * qty;
+      var otherFee = getOtherFee(consideration);
+      var tBody = [["Buy", 
+                    price.toFixed(2),
+                    qty,
+                    bidSize.toFixed(2),
+                    consideration.toFixed(2),
+                    (otherFee.platform).toFixed(2), 
+                    (otherFee.adValStamp).toFixed(2), 
+                    (otherFee.settlement).toFixed(2), 
+                    (otherFee.frcLevy).toFixed(2), 
+                    (otherFee.trading).toFixed(2), 
+                    (otherFee.xactLevy).toFixed(2), 
+                    (otherFee.total).toFixed(2)],
+                   ["Sell", "", "", "", "", "", "", "", "", "", "", ""]];
+
+
+
+
+      // Create table heading cells
+      for (var i = 0; i < tHeader.length; i++) {
+        var th = document.createElement("th");
+        th.textContent = tHeader[i];    // equal to td
+        tr.appendChild(th);
+      }
+      thead.appendChild(tr);
+      el_table.appendChild(thead);
+
+      // Create table body
+      for (var i = 0; i < tBody.length; i++) {
+        var row = document.createElement("tr");
+        for (var j = 0; j < tBody[i].length; j++) {
+          var el_cell = document.createElement("td");
+          if (i == 1) {
+            el_cell.setAttribute('id', sellId[j] );
+          }
+          if (!isNaN(tBody[i][j])) {
+            el_cell.textContent = tBody[i][j];
+            el_cell.style.textAlign = "right";
+          } else {
+            el_cell.textContent = tBody[i][j];
+          }
+          row.appendChild(el_cell);
+        }
+        el_table.appendChild(row);
+      }
+
+      // Append the table to the document body
+      el_div.appendChild(el_table);
+      document.body.appendChild(el_div);   
+      // document.body.innerHTML += "<br>";
+    }
+
+
+
+    function getBidSize(price) {
+    // https://www.hkex.com.hk/-/media/HKEX-Market/Services/Rules-and-Forms-and-Fees/Rules/SEHK/Securities/Rules/Sch_02.pdf
+
+        var bidSize = 0;
+        if (price <= 0.25) {
+          bidSize = 0.001;
+        } else if (price <= 0.5) {
+          bidSize = 0.005;
+        } else if (price <= 10) {
+          bidSize = 0.01;
+        } else if (price <= 20) {
+          bidSize = 0.02;
+        } else if (price <= 100) {
+          bidSize = 0.05;
+        } else if (price <= 200) {
+          bidSize = 0.1;
+        } else if (price <= 500) {
+          bidSize = 0.2;
+        } else if (price <= 1000) {
+          bidSize = 0.5;
+        } else if (price <= 2000) {
+          bidSize = 1;
+        } else if (price <= 5000) {
+          bidSize = 2;
+        } else if (price <= 9995) {
+          bidSize = 5;
+        }
+        
+        return bidSize;
+    }
+
+
+    function createTable() {
+
+      var tableData = [
+        { name: bidSize, age: price*qty, city: "New York" },
+        { name: "Jane", age: 30, city: "London" },
+        { name: "Bob", age: 35, city: "Paris" }
+      ];
+
+      var table = document.createElement("table");
+      var thead = document.createElement("thead");
+      var tbody = document.createElement("tbody");
+
+      // Create table header
+      var headerRow = document.createElement("tr");
+      for (var key in tableData[0]) {
+        var th = document.createElement("th");
+        th.textContent = key;
+        headerRow.appendChild(th);
+      }
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      // Create table body
+      for (var i = 0; i < tableData.length; i++) {
+        var row = document.createElement("tr");
+        for (var key in tableData[i]) {
+          var el_cell = document.createElement("td");
+          cell.textContent = tableData[i][key];
+          row.appendChild(cell);
+        }
+        tbody.appendChild(row);
+      }
+      table.appendChild(tbody);
+
+      // Append the table to the document body
+      document.body.appendChild(table);
+    }
+
+
+    function getBuyingCost(price, qty) {
+        var consideration = price * qty;
+        var otherFee = getOtherFee(consideration);
+        var total = consideration + otherFee.total;
+      return total;
+    }
+
+
+    function getSellingCost(price, qty) {
+        var consideration = price * qty;
+        var otherFee = getOtherFee(consideration);
+        var total = consideration - otherFee.total;
+        return total;
+    }
+
+
+    function getOtherFee(consideration) {
+        // Rate
+        var ad_val_stamp_rate = 0.001;   // 印花稅
+        var settlement_rate = 0.00002;   // 交收費 
+        var trading_rate = 0.0000565;    // 交易費
+        var xact_levy_rate = 0.000027;   // 證監會徵費
+        var frc_levy_rate = 0.0000015;   // 財匯局徵費       
+        var otherFee = {};
+        
+        // Fee        
+        otherFee.platform = 15; // 平台使用費
+                
+        otherFee.adValStamp = ad_val_stamp_rate * consideration;  // 印花稅 | 每宗交易額之 0.1%" | 不足一元 亦作一元計算   
+        if (otherFee.adValStamp < 1) {
+            otherFee.adValStamp = 1;
+        }
+        otherFee.adValStamp = Math.ceil(otherFee.adValStamp);
+
+
+        otherFee.settlement = settlement_rate * consideration;  // 交收費 | 0.002% * 成交金額 | 最低 2港元 | 最高 100港元
+        if (otherFee.settlement > 100){
+            otherFee.settlement = 100;
+        } else if (otherFee.settlement < 2 ) {
+            otherFee.settlement = 2;
+        }
+               
+        otherFee.trading = trading_rate * consideration; // 交易費      
+        
+        otherFee.xactLevy = xact_levy_rate * consideration;  // 證監會徵費        
+        
+        otherFee.frcLevy = frc_levy_rate * consideration;   // 財匯局徵費        
+        
+        otherFee.total = otherFee.platform + otherFee.adValStamp + otherFee.settlement + otherFee.trading  + otherFee.xactLevy + otherFee.frcLevy;       
+
+        return otherFee;
+    }    
+    
+
+    function setCursorFocus() {
+      var inputField = document.getElementById("price");
+      inputField.focus();
+    }
+
+
+    function handleKeyPress(event) {
+      if (event.keyCode === 13) { // 13 is the key code for Enter
+        event.preventDefault(); // Prevent the default form submission
+        main();
+      }
+    }
+
+
+    function clearField(inputField) {
+      inputField.value = '';
+    }
+
   </script>
+
+
+  <style>
+
+    .top-section {
+      height: 25vh; /* Adjust the height of the top section as needed */
+      overflow: auto;
+    }
+
+    .bottom-section {
+      height: 50vh; /* Adjust the height of the bottom section as needed */
+      overflow: auto;
+    }
+
+    .iframe-container {
+      width: 100%;
+      height: 100%;
+    }
+
+    .iframe-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+/*
+    .breakdownTable {
+      position: fixed;
+    }
+
+    .mainTable {
+      position: relative;
+      margin-top: 100px;
+    }
+*/
+    th:first-child,
+    td:first-child {
+      position: sticky;
+      left: 0;
+      background-color: grey;
+      font-weight: bold;
+      z-index: 1;
+    }
+
+    
+    .table-container {
+      top: 500;
+      width: 100%;
+
+      height: 100px;
+      overflow: auto;
+    }
+
+
+/*
+    table {
+      table-layout: auto;
+      border-collapse: collapse;
+      // width: 100%;
+    }
+*/
+
+    th,
+    td {
+      border: 1px solid black;
+      padding: 8px;
+      background-color: grey;      
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background-color: grey;
+      z-index: 2;
+    }
+
+    body {
+      background-color: lightgray;
+    }
+
+  </style>
 </head>
-<body>
-  <h2>Enter Price and Quantity</h2>
-  <form>
+<body onload="setCursorFocus()">
+  <form id="myForm">
     <label for="price">Price:</label>
-    <input type="number" id="price" step="0.01"><br><br>
-    <label for="quantity">Quantity:</label>
-    <input type="number" id="quantity"><br><br>
-    <input type="button" value="Calculate" onclick="calculateTotal()">
+    <input type="number" id="price" name="price" onclick="clearField(this)" required><br><br>
+
+    <label for="price">Qty:</label>
+    <input type="number" id="qty" name="qty" onkeypress="handleKeyPress(event)" required><br><br>
+
+    <input type="button" value="Submit" onclick="main()">
   </form>
-  <br>
-  <table border="1">
-    <tr>
-      <th>Price</th>
-      <th>Quantity</th>
-      <th>Total Amount</th>
-    </tr>
-    <tr>
-      <td id="displayPrice"></td>
-      <td id="displayQuantity"></td>
-      <td id="total"></td>
-    </tr>
-  </table>
+  
 </body>
 </html>
