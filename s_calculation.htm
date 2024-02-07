@@ -2,7 +2,7 @@
 <html>
 <head>
   <script>
-    var price, qty, bidSize, consideration;
+    var price, qty, bidSize, consideration, buyTotalAmount, sellTotalAmount;
 
     function setSellBreakdown(curBuyPrice, curSellPrice) {
       var consideration = curSellPrice * qty;
@@ -10,37 +10,46 @@
       var el;
 
       el = document.getElementById("s_Price");      
-      el.innerHTML = curSellPrice.toFixed(2);
+      el.innerHTML = fmtDecimal(curSellPrice);
       
       el = document.getElementById("s_Qty");
-      el.innerHTML = qty;
+      el.innerHTML = fmtNoDecimal(qty);
       
       el = document.getElementById("s_BidSize");
-      el.innerHTML = bidSize.toFixed(2);           
+      el.innerHTML = fmtDecimal(bidSize);
       
-      el = document.getElementById("s_Consideration");      
-      el.innerHTML = consideration.toFixed(2);
+      el = document.getElementById("s_Consideration");
+      el.innerHTML = fmtDecimal(consideration);
             
       el = document.getElementById("s_Platform"); 
-      el.innerHTML = (otherFee.platform).toFixed(2);
+      el.innerHTML = fmtDecimal(otherFee.platform);
       
       el = document.getElementById("s_AdValStamp");
-      el.innerHTML = (otherFee.adValStamp).toFixed(2);
+      el.innerHTML = fmtDecimal(otherFee.adValStamp);
 
       el = document.getElementById("s_Settlement");
-      el.innerHTML = (otherFee.settlement).toFixed(2);
+      el.innerHTML = fmtDecimal(otherFee.settlement);
       
       el = document.getElementById("s_FRCLevy");
-      el.innerHTML = (otherFee.frcLevy).toFixed(2);
+      el.innerHTML = fmtDecimal(otherFee.frcLevy);
 
       el = document.getElementById("s_Trading");
-      el.innerHTML = (otherFee.trading).toFixed(2);
+      el.innerHTML = fmtDecimal(otherFee.trading);
 
       el = document.getElementById("s_XactLevy");
-      el.innerHTML = (otherFee.xactLevy).toFixed(2);  
+      el.innerHTML = fmtDecimal(otherFee.xactLevy);
 
       el = document.getElementById("s_OtherTotal");
-      el.innerHTML =(otherFee.total).toFixed(2);
+      el.innerHTML =fmtDecimal(otherFee.total);
+
+      sellTotalAmount = consideration - otherFee.total;
+      el = document.getElementById("s_TotalAmount");
+      el.innerHTML = fmtDecimal(sellTotalAmount);     
+
+      var gainLoss = sellTotalAmount - buyTotalAmount;
+      el = document.getElementById("s_GainLoss");
+      //el.innerHTML =(gainLoss).toFixed(2);
+      el.innerHTML = "<div><strong>" + fmtDecimal(gainLoss) + "</strong></div>";
     }
 
 
@@ -108,7 +117,7 @@
               var actualGainLoss = sellingCost - buyingCost;
               var actualGainLossPercent = (sellingCost - buyingCost) / buyingCost * 100;
               var gainLossPercent = (curSellPrice - curBuyPrice) / curBuyPrice * 100;
-              var outString = actualGainLoss.toFixed(2) + "<BR>" + gainLossPercent.toFixed(2) + "% <BR>" + actualGainLossPercent.toFixed(2) + "%";
+              var outString = "<div><strong>" + fmtDecimal(actualGainLoss) + " </strong></div><br>" + fmtDecimal(gainLossPercent) + "% <BR>" + fmtDecimal(actualGainLossPercent) + "%";
               //var outString = buyingCost.toFixed(2) + "|" + sellingCost.toFixed(2);
 
               //cell.textContent = outString;
@@ -148,6 +157,8 @@
       setMainTable();
     }
 
+
+
     function setBreakdownTable() {
       // Clear the previous table, if it exists
       var previousTable = document.getElementById("breakdownTable");
@@ -164,9 +175,10 @@
       el_div.classList.add("top-section");
       el_div.id = "top-section";
 
-      var tHeader = ["","Price", "Qty", "BidSize", "Considderation", "Platform",	"AdValStamp",	"Settlement",	"FRCLevy",	"Trading",	"XactLevy", " OtherTotal"]; 
+      var tHeader = ["","Price", "Qty", "BidSize", "Considderation", "Platform",	"AdValStamp",	
+                    "Settlement",	"FRCLevy",	"Trading",	"XactLevy", " OtherTotal", "TotalAmount", "GainLoss"]; 
       var sellId = ["s_title","s_Price", "s_Qty", "s_BidSize", "s_Consideration", "s_Platform","s_AdValStamp",	
-                    "s_Settlement",	"s_FRCLevy",	"s_Trading",	"s_XactLevy", "s_OtherTotal"];
+                    "s_Settlement",	"s_FRCLevy",	"s_Trading",	"s_XactLevy", "s_OtherTotal", "s_TotalAmount", "s_GainLoss"];
 
       var el_table = document.createElement("table");
       el_table.id = "breakdownTable";      
@@ -177,23 +189,24 @@
 
       var consideration = price * qty;
       var otherFee = getOtherFee(consideration);
+      buyTotalAmount = consideration + otherFee.total;
       var tBody = [["Buy", 
-                    price.toFixed(2),
-                    qty,
-                    bidSize.toFixed(2),
-                    consideration.toFixed(2),
-                    (otherFee.platform).toFixed(2), 
-                    (otherFee.adValStamp).toFixed(2), 
-                    (otherFee.settlement).toFixed(2), 
-                    (otherFee.frcLevy).toFixed(2), 
-                    (otherFee.trading).toFixed(2), 
-                    (otherFee.xactLevy).toFixed(2), 
-                    (otherFee.total).toFixed(2)],
-                   ["Sell", "", "", "", "", "", "", "", "", "", "", ""]];
-
-
-
-
+                    fmtDecimal(price),
+                    fmtNoDecimal(qty),
+                    fmtDecimal(bidSize),
+                    fmtDecimal(consideration),
+                    fmtDecimal(otherFee.platform), 
+                    fmtDecimal(otherFee.adValStamp), 
+                    fmtDecimal(otherFee.settlement), 
+                    fmtDecimal(otherFee.frcLevy), 
+                    fmtDecimal(otherFee.trading), 
+                    fmtDecimal(otherFee.xactLevy), 
+                    fmtDecimal(otherFee.total),
+                    fmtDecimal(buyTotalAmount),
+                    "0"],
+                   ["Sell", "", "", "", "", "", "", "", "", "", "", "","", ""]];
+        
+        
       // Create table heading cells
       for (var i = 0; i < tHeader.length; i++) {
         var th = document.createElement("th");
@@ -211,12 +224,9 @@
           if (i == 1) {
             el_cell.setAttribute('id', sellId[j] );
           }
-          if (!isNaN(tBody[i][j])) {
-            el_cell.textContent = tBody[i][j];
-            el_cell.style.textAlign = "right";
-          } else {
-            el_cell.textContent = tBody[i][j];
-          }
+
+          el_cell.textContent = tBody[i][j];
+          el_cell.style.textAlign = "right";
           row.appendChild(el_cell);
         }
         el_table.appendChild(row);
@@ -229,6 +239,13 @@
     }
 
 
+    function fmtDecimal(n) {
+      return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function fmtNoDecimal(n) {
+      return n.toLocaleString();
+    }
 
     function getBidSize(price) {
     // https://www.hkex.com.hk/-/media/HKEX-Market/Services/Rules-and-Forms-and-Fees/Rules/SEHK/Securities/Rules/Sch_02.pdf
@@ -259,45 +276,6 @@
         }
         
         return bidSize;
-    }
-
-
-    function createTable() {
-
-      var tableData = [
-        { name: bidSize, age: price*qty, city: "New York" },
-        { name: "Jane", age: 30, city: "London" },
-        { name: "Bob", age: 35, city: "Paris" }
-      ];
-
-      var table = document.createElement("table");
-      var thead = document.createElement("thead");
-      var tbody = document.createElement("tbody");
-
-      // Create table header
-      var headerRow = document.createElement("tr");
-      for (var key in tableData[0]) {
-        var th = document.createElement("th");
-        th.textContent = key;
-        headerRow.appendChild(th);
-      }
-      thead.appendChild(headerRow);
-      table.appendChild(thead);
-
-      // Create table body
-      for (var i = 0; i < tableData.length; i++) {
-        var row = document.createElement("tr");
-        for (var key in tableData[i]) {
-          var el_cell = document.createElement("td");
-          cell.textContent = tableData[i][key];
-          row.appendChild(cell);
-        }
-        tbody.appendChild(row);
-      }
-      table.appendChild(tbody);
-
-      // Append the table to the document body
-      document.body.appendChild(table);
     }
 
 
@@ -388,16 +366,6 @@
       overflow: auto;
     }
 
-    .iframe-container {
-      width: 100%;
-      height: 100%;
-    }
-
-    .iframe-container iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
 
 /*
     .breakdownTable {
