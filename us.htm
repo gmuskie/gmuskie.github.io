@@ -242,25 +242,25 @@
         if (price <= 0.25) {
           bidSize = 0.001;
         } else if (price <= 0.5) {
-          bidSize = 0.005;
+          bidSize = 0.01;
         } else if (price <= 10) {
           bidSize = 0.01;
         } else if (price <= 20) {
-          bidSize = 0.02;
+          bidSize = 0.01;
         } else if (price <= 100) {
-          bidSize = 0.05;
+          bidSize = 0.01;
         } else if (price <= 200) {
-          bidSize = 0.1;
+          bidSize = 0.01;
         } else if (price <= 500) {
-          bidSize = 0.2;
+          bidSize = 0.01;
         } else if (price <= 1000) {
-          bidSize = 0.5;
+          bidSize = 0.01;
         } else if (price <= 2000) {
-          bidSize = 1;
+          bidSize = 0.01;
         } else if (price <= 5000) {
-          bidSize = 2;
+          bidSize = 0.01;
         } else if (price <= 9995) {
-          bidSize = 5;
+          bidSize = 0.01;
         }
         
         return bidSize;
