@@ -108,7 +108,7 @@
       el_bottomDiv.id = "bottom-section";
       el_bottomDiv.classList.add("bottom-section");
 
-      var tHeader = ["","Price", "Qty", "G/L HKD", "BidSize", "Consideration", "Platform",	"Commission",
+      var tHeader = ["","Price", "Qty", "G/L HKD", "BidSize", "Consideration","Commission", "Platform",
               "Settlement",	"SEC",	"Trading", " OtherTotal", "TotalAmount", "GainLoss(%)"]; 
 
       var sellId = ["s_title","s_Price", , "s_GL_HKD", "s_Qty", "s_BidSize", "s_Consideration", "s_Platform","s_Commission",	
@@ -128,6 +128,7 @@
       var tBody = [["Buy", 
                     fmtDecimal(price),
                     fmtNoDecimal(qty),
+                    fmtDecimal(0),
                     fmtDecimal(bidSize),
                     fmtDecimal(consideration),
                     fmtDecimal(otherFee.commission), 
@@ -137,8 +138,7 @@
                     fmtDecimal(0),  //otherFee.trading
                     fmtDecimal(otherFee.total),
                     fmtDecimal(buyTotalAmount),
-                    "0",
-                    "0"],
+                    "0", ],
                    ];      
                    
       var maxRow = 500;
@@ -323,6 +323,7 @@
         
         // $0.000008 * transaction amount, min $0.01/trade (sells only)
         otherFee.sec = sec_rate * price * qty;
+        otherFee.sec = Math.ceil(otherFee.sec * 100) / 100;
 
         // $0.000166/Share, min $0.01/trade, max $8.30/trade (sells only)  
         otherFee.trading = trading_rate * qty; 
