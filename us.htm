@@ -21,7 +21,7 @@
         第1,000,001-5,000,000股|0.0035美元
         第5,000,001股以上|0.0030美元
       交收費|0.003美元*成交股數|美國結算機構等 (Settlement fees)
-      證監會規費|0.000008*交易金額，每次成交最低0.01 美元（僅賣出收取）|美國證監會 (SEC fees)
+      證監會規費|0.0000278*交易金額，每次成交最低0.01 美元（僅賣出收取）|美國證監會 (SEC fees)
       交易活動費|0.000166 美元*賣出股數，每次成交最低0.01 美元，最高8.30 美元（僅賣出收取）|美國金融業監管局 (Trading Activity fees)
       
     */
@@ -302,7 +302,7 @@
         var commission_rate = 0.0049    // $0.0049/Share, minimum $0.99/order
         var fixed_platform_rate = 0.005 // $0.005/Share, minimum $1/order
         var settlement_rate = 0.003;    // $0.003/Share
-        var sec_rate = 0.0000278         // $0.000008 * transaction amount, min $0.01/trade (sells only)
+        var sec_rate = 0.0000278         // $0.0000278 * transaction amount, min $0.01/trade (sells only)
         var trading_rate = 0.000166;    // $0.000166/Share, min $0.01/trade, max $8.30/trade (sells only)
         var otherFee = {};
 
