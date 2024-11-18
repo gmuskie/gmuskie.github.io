@@ -166,13 +166,8 @@
           var el_td = document.createElement("td");
           var buyingCost = getCost(curBuyPrice, qty, "buy")
           var buyingCost = getCost(curSellPrice, qty, "sell");
-
-          
-
-          if (i == 1) {
-            el_td.setAttribute('id', sellId[j] );
-          }
-
+         
+          el_td.setAttribute('id', sellId[j] );
 
           //el_td.textContent = tSellBody[i][j];
           el_td.textContent = tSellBody[j];
