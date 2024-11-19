@@ -72,10 +72,10 @@
       el_bottomDiv.classList.add("bottom-section");
 
       var tHeader = ["","Price", "Qty", "G/L HKD", "BidSize", "Consideration", "Platform", "Settlement",	
-                     "AdValStamp", "FRCLevy",	"Trading", "XactLevy", "OtherTotal", "TotalAmount", "GainLoss(%)"]; 
+                     "AdValStamp"," Trading", "XactLevy", "FRCLevy", "OtherTotal", "TotalAmount", "GainLoss(%)"]; 
 
       var sellId = ["s_title","s_Price","s_Qty", "s_GL_HKD", "s_BidSize", "s_Consideration", "s_Platform", "s_Settlement",	
-                    "AdValStamp",	"s_FRCLevy",	"s_Trading", "s_XactLevy", "s_OtherTotal", "s_TotalAmount", "s_GainLoss"];
+                    "AdValStamp", "s_Trading", "s_XactLevy", "s_FRCLevy", "s_OtherTotal", "s_TotalAmount", "s_GainLoss"];
 
       var el_table = document.createElement("table");
       el_table.id = "mainTable";      
@@ -97,9 +97,9 @@
                     fmtDecimal(otherFee.platform), 
                     fmtDecimal(otherFee.settlement), 
                     fmtDecimal(otherFee.adValStamp),                     
-                    fmtDecimal(otherFee.frcLevy), 
                     fmtDecimal(otherFee.trading), 
                     fmtDecimal(otherFee.xactLevy), 
+                    fmtDecimal(otherFee.frcLevy),                     
                     fmtDecimal(otherFee.total),
                     fmtDecimal(buyTotalAmount),
                     "0"],
@@ -151,9 +151,9 @@
                     fmtDecimal(otherFee.platform), 
                     fmtDecimal(otherFee.settlement), 
                     fmtDecimal(otherFee.adValStamp),                     
-                    fmtDecimal(otherFee.frcLevy), 
                     fmtDecimal(otherFee.trading), 
                     fmtDecimal(otherFee.xactLevy), 
+                    fmtDecimal(otherFee.frcLevy), 
                     fmtDecimal(otherFee.total),
                     fmtDecimal(sellTotalAmount),
                     fmtDecimal(gl) + " (" + fmtDecimal(glPcent) + ")",                    
@@ -205,10 +205,12 @@
 
     function fmtDecimal(num) {
       // Multiply by 1000 to shift the decimal point
-      const shifted = Math.round(num * 1000);
+      //const shifted = Math.round(num * 1000);
+      const shifted = num * 1000;
       
       // Extract the first two decimal places
       const wholePart = Math.floor(shifted / 10); // Get the whole number part
+
       const decimalPart = shifted % 10; // Get the third decimal place
 
       // If the third decimal place is greater than 1, add it to the second decimal place
@@ -219,6 +221,8 @@
       }
 
       return newNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      
+      
     }
 
 
