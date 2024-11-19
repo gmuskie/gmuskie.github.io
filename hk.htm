@@ -203,8 +203,22 @@
     }
 
 
-    function fmtDecimal(n) {
-      return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    function fmtDecimal(num) {
+      // Multiply by 1000 to shift the decimal point
+      const shifted = Math.round(num * 1000);
+      
+      // Extract the first two decimal places
+      const wholePart = Math.floor(shifted / 10); // Get the whole number part
+      const decimalPart = shifted % 10; // Get the third decimal place
+
+      // If the third decimal place is greater than 1, add it to the second decimal place
+      if (decimalPart > 1) {
+          newNum = (wholePart + 1) / 100; // Add 1 to the second decimal place
+      } else {
+        newNum = wholePart / 100; // Just return the number with two decimal places
+      }
+
+      return newNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
 
