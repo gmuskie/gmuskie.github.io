@@ -320,6 +320,12 @@
     }
 
 
+    function ceilToDecimalPlaces(num, decimalPlaces) {
+        const factor = Math.pow(10, decimalPlaces); // Scale the number
+        return Math.ceil(num * factor) / factor;   // Apply Math.ceil and scale back
+    }
+
+
     function getOtherFee(price, qty, bs) {
         // bs => reserved
         // Rate
@@ -332,7 +338,9 @@
         otherFee.settlement =  settlement;
 
         // 0.08%, minimum $80/order
-        otherFee.commission = commission_rate * (qty * price);
+         otherFee.commission = ceilToDecimalPlaces(commission_rate * (qty * price), 0);
+        
+
         if (otherFee.commission < 80) {
           otherFee.commission = 80; 
         }
