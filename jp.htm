@@ -12,9 +12,21 @@
       交收費	   40日元/筆	            上游清結算機構等      
       
     */
-    var price, qty, bidSize, consideration, buyTotalAmount, sellTotalAmount, el_containerDiv;
+    var price, qty, bidSize, consideration, buyTotalAmount, sellTotalAmount, el_containerDiv, xRate;
+
+
+    const apiUrl = `https://open.er-api.com/v6/latest/JPY`; // Example API endpoint
+    async function fetchExchangeRate() {
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+
+      // Assign the JPY to HKD rate to the variable xrate
+      xRate = data.rates.HKD;
+    }
+
 
     function init() {
+      fetchExchangeRate();
       setupForm();
     }
 
@@ -159,7 +171,7 @@
       
       // table body => sell
       // JPYtoHKD = 0.05
-      JPYtoHKD = getJPYtoHKDrate();
+      JPYtoHKD = xRate;
       
 
       for (var i = 0; i <= maxRow; i++) {
@@ -374,17 +386,6 @@
     }
 
 
-
-    async function getJPYtoHKDrate() {
-      const apiUrl = `https://open.er-api.com/v6/latest/JPY`; // Example API endpoint
-
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-
-      // Extract the JPY to HKD rate
-      const rate = data.rates.HKD;
-      return rate.toFixed(4);
-    }
 
 
 
