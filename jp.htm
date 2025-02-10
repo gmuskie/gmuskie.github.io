@@ -158,7 +158,10 @@
       }
       
       // table body => sell
-      JPYtoHKD = 0.05
+      // JPYtoHKD = 0.05
+      JPYtoHKD = getJPYtoHKDrate();
+      
+
       for (var i = 0; i <= maxRow; i++) {
         consideration = curSellPrice * qty;
         otherFee = getOtherFee(curSellPrice, qty, "sell");
@@ -369,6 +372,20 @@
     function clearField(inputField) {     
       inputField.value = '';
     }
+
+
+
+    function getJPYtoHKDrate() {
+      const apiUrl = `https://open.er-api.com/v6/latest/JPY`; // Example API endpoint
+
+      const response = await fetch(apiUrl);
+      const data = await response.json();
+
+      // Extract the JPY to HKD rate
+      const rate = data.rates.HKD;
+      return rate.toFixed(4);
+    }
+
 
 
   </script>
