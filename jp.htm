@@ -14,8 +14,8 @@
     */
     var price, qty, bidSize, consideration, buyTotalAmount, sellTotalAmount, el_containerDiv, xRate;
 
-
     const apiUrl = `https://open.er-api.com/v6/latest/JPY`; // Example API endpoint
+
     async function fetchExchangeRate() {
       const response = await fetch(apiUrl);
       const data = await response.json();
@@ -26,13 +26,14 @@
 
 
     function init() {
-      fetchExchangeRate();
+      fetchExchangeRate();           
       setupForm();
     }
 
 
     function setupForm() {
       const form = document.createElement('form');
+
       form.onsubmit = main; // Call main() on form submission
 
       const priceLabel = document.createElement('label');
@@ -68,9 +69,20 @@
       bidsizeLabel.appendChild(bidsizeInput);
       bidsizeInput.setAttribute("value", "1");
       
+      const xRateLabel = document.createElement('label');
+      xRateLabel.textContent = 'xRate: ';
+      const xRateInput = document.createElement('input');
+      xRateInput.setAttribute('id', 'xRate');
+      xRateInput.setAttribute('type', 'number');
+      xRateInput.setAttribute('name', 'xRate');
+      xRateInput.setAttribute('disabled', 'true');
+      xRateLabel.appendChild(xRateInput);
+      xRateInput.setAttribute("value", xRate);
+
       const submitButton = document.createElement('input');
       submitButton.setAttribute('type', 'submit');
       submitButton.setAttribute('value', 'Submit');
+
 
       form.appendChild(priceLabel);
       form.appendChild(document.createElement('br'));
@@ -78,14 +90,21 @@
       form.appendChild(qtyLabel);
       form.appendChild(document.createElement('br'));
       form.appendChild(document.createElement('br'));
+      
       form.appendChild(bidsizeLabel);
       form.appendChild(document.createElement('br'));
       form.appendChild(document.createElement('br'));
+      
+      form.appendChild(xRateLabel);
+      form.appendChild(document.createElement('br'));
+      form.appendChild(document.createElement('br'));
+
       form.appendChild(submitButton);
       
       form.appendChild(document.createElement('br'));
 
       document.body.appendChild(form);
+    
       priceInput.focus();
 
     }
@@ -227,11 +246,13 @@
 
     
     function main() {
-      // Prevent form submission
+
+      // Prevent form submission     
       event.preventDefault();
 
-      // setupForm();
+      document.getElementById("xRate").value = xRate;
 
+      // setupForm();
       price = document.getElementById("price").value;
       price = parseFloat(price);
       qty = document.getElementById("qty").value;
