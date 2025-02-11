@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobile-Friendly Calculation Form</title>
+  <style>
+    /* General Styles */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.8rem;
+    }
+
+    form {
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      font-size: 1rem;
+      margin-bottom: 5px;
+    }
+
+    input {
+      padding: 10px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    input.calculated {
+      background-color: #f0f0f0;
+      border: 1px solid #ddd;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      form {
+        padding: 15px;
+      }
+
+      label {
+        font-size: 0.9rem;
+      }
+
+      input {
+        font-size: 0.9rem;
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Calculation Form</h1>
+  <form id="calcForm">
+    <!-- Buy Field -->
+    <div class="form-group">
+      <label for="buy">Buy:</label>
+      <input type="number" id="buy" name="buy" placeholder="Enter buy value" required>
+    </div>
+
+    <!-- Sell Field -->
+    <div class="form-group">
+      <label for="sell">Sell:</label>
+      <input type="number" id="sell" name="sell" placeholder="Enter sell value" required>
+    </div>
+
+    <!-- GL Value (Calculated Field) -->
+    <div class="form-group">
+      <label for="gl_val">GL Value:</label>
+      <input type="text" id="gl_val" name="gl_val" class="calculated" readonly>
+    </div>
+
+    <!-- GL Percent (Calculated Field) -->
+    <div class="form-group">
+      <label for="gl_pcent">GL Percent:</label>
+      <input type="text" id="gl_pcent" name="gl_pcent" class="calculated" readonly>
+    </div>
+
+    <!-- Gain Back Percent (Calculated Field) -->
+    <div class="form-group hidden" id="gainBackGroup">
+      <label for="gain_back_pcent">Gain Back Percent:</label>
+      <input type="text" id="gain_back_pcent" name="gain_back_pcent" class="calculated" readonly>
+    </div>
+  </form>
+
+  <script>
+    // Get references to the input fields
+    const buyField = document.getElementById('buy');
+    const sellField = document.getElementById('sell');
+    const glValField = document.getElementById('gl_val');
+    const glPcentField = document.getElementById('gl_pcent');
+    const gainBackGroup = document.getElementById('gainBackGroup');
+    const gainBackField = document.getElementById('gain_back_pcent');
+
+    // Function to calculate GL Value, GL Percent, and Gain Back Percent
+    function calculateFields() {
+      const buy = parseFloat(buyField.value) || 0; // Default to 0 if empty
+      const sell = parseFloat(sellField.value) || 0; // Default to 0 if empty
+
+      // Calculate GL Value and GL Percent
+      const glVal = sell - buy;
+      const glPcent = buy !== 0 ? ((sell - buy) / buy) * 100 : 0;
+
+      // Update the calculated fields
+      glValField.value = glVal.toFixed(2); // Round to 2 decimal places
+      glPcentField.value = glPcent.toFixed(2) + '%'; // Add percentage symbol
+
+      // Show or hide the Gain Back Percent field
+      if (sell < buy && sell > 0) {
+        const gainBackPcent = ((buy - sell) / sell) * 100;
+        gainBackField.value = gainBackPcent.toFixed(2) + '%'; // Add percentage symbol
+        gainBackGroup.classList.remove('hidden'); // Show the field
+      } else {
+        gainBackGroup.classList.add('hidden'); // Hide the field
+        gainBackField.value = ''; // Clear the value
+      }
+    }
+
+    // Add event listeners to the input fields
+    buyField.addEventListener('input', calculateFields);
+    sellField.addEventListener('input', calculateFields);
+  </script>
+</body>
+</html>
