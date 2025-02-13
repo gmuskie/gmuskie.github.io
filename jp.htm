@@ -127,7 +127,7 @@
       el_bottomDiv.classList.add("bottom-section");
 
       var tHeader = ["","Price", "Qty", "G/L HKD", "BidSize", "Consideration","Commission", "Platform",
-              "Settlement",	"SEC",	"Trading", " OtherTotal", "TotalAmount", "GainLoss(%)"]; 
+              "Settlement",	"SEC",	"Trading", " OtherTotal", "TotalJPY=>HKD", "GainLoss(%)"]; 
 
       var sellId = ["s_title","s_Price", , "s_GL_HKD", "s_Qty", "s_BidSize", "s_Consideration", "s_Platform","s_Commission",	
                     "s_Settlement",	"s_SEC",	"s_Trading", "s_OtherTotal", "s_TotalAmount", "s_GainLoss"];
@@ -143,6 +143,8 @@
       var otherFee = getOtherFee(price, qty, "buy")
       
       buyTotalAmount = consideration + otherFee.total;
+      buyTotalAmountHKD = (consideration + otherFee.total) * xRate;
+
       var tBody = [["Buy", 
                     fmtNoDecimal(price),
                     fmtNoDecimal(qty),
@@ -155,7 +157,7 @@
                     fmtNoDecimal(0),  //otherFee.sec
                     fmtNoDecimal(0),  //otherFee.trading
                     fmtNoDecimal(otherFee.total),
-                    fmtNoDecimal(buyTotalAmount),
+                    fmtNoDecimal(buyTotalAmount) + " => " + fmtNoDecimal(buyTotalAmountHKD),
                     "0", ],
                    ];      
                    
@@ -197,6 +199,7 @@
         consideration = curSellPrice * qty;
         otherFee = getOtherFee(curSellPrice, qty, "sell");
         sellTotalAmount = consideration - otherFee.total;
+        sellTotalAmountHKD = (consideration - otherFee.total) * xRate;
         gl = sellTotalAmount - buyTotalAmount;
         glPcent = (curSellPrice - price) / price * 100;
         var tSellBody = ["Sell", 
@@ -212,7 +215,7 @@
                     fmtDecimal(0),  
                     fmtDecimal(0), 
                     fmtNoDecimal(otherFee.total),
-                    fmtNoDecimal(sellTotalAmount),
+                    fmtNoDecimal(sellTotalAmount) + " => " + fmtNoDecimal(sellTotalAmountHKD) ,
                     fmtNoDecimal(gl) + " (" + fmtDecimal(glPcent) + ")",
                    ];
 
@@ -276,8 +279,8 @@
     }
 
 
-    function fmtNoDecimal(n) {
-      return n.toLocaleString();
+    function fmtNoDecimal(n) {      
+      return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
     }
 
 
