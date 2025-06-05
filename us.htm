@@ -302,7 +302,7 @@
         var commission_rate = 0.0049    // $0.0049/Share, minimum $0.99/order
         var fixed_platform_rate = 0.005 // $0.005/Share, minimum $1/order
         var settlement_rate = 0.003;    // $0.003/Share
-        var sec_rate = 0.0000278         // $0.0000278 * transaction amount, min $0.01/trade (sells only)
+        var sec_rate = 0.0000278         // $0.0000278 * transaction amount, min $0.01/trade (sells only) cancelled from May 14 2025,EST)
         var trading_rate = 0.000166;    // $0.000166/Share, min $0.01/trade, max $8.30/trade (sells only)
         var otherFee = {};
 
@@ -322,8 +322,9 @@
         otherFee.settlement = settlement_rate * qty; 
         
         // $0.000008 * transaction amount, min $0.01/trade (sells only)
-        otherFee.sec = sec_rate * price * qty;
-        otherFee.sec = Math.ceil(otherFee.sec * 100) / 100;
+        // otherFee.sec = sec_rate * price * qty;
+        // otherFee.sec = Math.ceil(otherFee.sec * 100) / 100;
+        otherFee.sec = 0
 
         // $0.000166/Share, min $0.01/trade, max $8.30/trade (sells only)  
         otherFee.trading = trading_rate * qty; 
