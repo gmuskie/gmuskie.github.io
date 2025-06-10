@@ -21,8 +21,8 @@
         第1,000,001-5,000,000股|0.0035美元
         第5,000,001股以上|0.0030美元
       交收費|0.003美元*成交股數|美國結算機構等 (Settlement fees)
-      證監會規費|0.0000278*交易金額，每次成交最低0.01 美元（僅賣出收取）|美國證監會 (SEC fees)
       交易活動費|0.000166 美元*賣出股數，每次成交最低0.01 美元，最高8.30 美元（僅賣出收取）|美國金融業監管局 (Trading Activity fees)
+      綜合審計跟蹤監管費 | NMS股票：0.000046/股 | OTC股票：0.00000046/股 | 美國金融業管理局 | Consolidated Audit Trail Fees
       
     */
     var price, qty, bidSize, consideration, buyTotalAmount, sellTotalAmount, el_containerDiv;
@@ -109,10 +109,10 @@
       el_bottomDiv.classList.add("bottom-section");
 
       var tHeader = ["","Price", "Qty", "G/L HKD", "BidSize", "Consideration","Commission", "Platform",
-              "Settlement",	"SEC",	"Trading", " OtherTotal", "TotalAmount", "GainLoss(%)"]; 
+              "Settlement",	"Trading", "Audit", " OtherTotal", "TotalAmount", "GainLoss(%)"]; 
 
       var sellId = ["s_title","s_Price", , "s_GL_HKD", "s_Qty", "s_BidSize", "s_Consideration", "s_Platform","s_Commission",	
-                    "s_Settlement",	"s_SEC",	"s_Trading", "s_OtherTotal", "s_TotalAmount", "s_GainLoss"];
+                    "s_Settlement",	"s_Trading", "s_Audit", "s_OtherTotal", "s_TotalAmount", "s_GainLoss"];
 
       var el_table = document.createElement("table");
       el_table.id = "mainTable";      
@@ -133,9 +133,9 @@
                     fmtDecimal(consideration),
                     fmtDecimal(otherFee.commission), 
                     fmtDecimal(otherFee.platform), 
-                    fmtDecimal(otherFee.settlement),                     
-                    fmtDecimal(0),  //otherFee.sec
+                    fmtDecimal(otherFee.settlement),
                     fmtDecimal(0),  //otherFee.trading
+                    fmtDecimal(otherFee.audit),  //otherFee.audit
                     fmtDecimal(otherFee.total),
                     fmtDecimal(buyTotalAmount),
                     "0", ],
@@ -186,8 +186,8 @@
                     fmtDecimal(otherFee.commission), 
                     fmtDecimal(otherFee.platform), 
                     fmtDecimal(otherFee.settlement), 
-                    fmtDecimal(otherFee.sec),  
                     fmtDecimal(otherFee.trading), 
+                    fmtDecimal(otherFee.audit), 
                     fmtDecimal(otherFee.total),
                     fmtDecimal(sellTotalAmount),
                     fmtDecimal(gl) + " (" + fmtDecimal(glPcent) + ")",
@@ -299,11 +299,12 @@
 
     function getOtherFee(price, qty, bs) {
         // Rate
-        var commission_rate = 0.0049    // $0.0049/Share, minimum $0.99/order
-        var fixed_platform_rate = 0.005 // $0.005/Share, minimum $1/order
+        var commission_rate = 0.0049    // $0.0049/Share, minimum $0.99/order | Futu
+        var fixed_platform_rate = 0.005 // $0.005/Share, minimum $1/order | Futu
         var settlement_rate = 0.003;    // $0.003/Share
         var sec_rate = 0.0000278         // $0.0000278 * transaction amount, min $0.01/trade (sells only) cancelled from May 14 2025,EST)
         var trading_rate = 0.000166;    // $0.000166/Share, min $0.01/trade, max $8.30/trade (sells only)
+        var audit_rate = 0.000046;      // NMS股票：0.000046/股 | OTC股票：0.00000046/股 
         var otherFee = {};
 
         // $0.0049/Share, minimum $0.99/order
@@ -321,10 +322,6 @@
         // $0.003/Share
         otherFee.settlement = settlement_rate * qty; 
         
-        // $0.000008 * transaction amount, min $0.01/trade (sells only)
-        // otherFee.sec = sec_rate * price * qty;
-        // otherFee.sec = Math.ceil(otherFee.sec * 100) / 100;
-        otherFee.sec = 0
 
         // $0.000166/Share, min $0.01/trade, max $8.30/trade (sells only)  
         otherFee.trading = trading_rate * qty; 
@@ -333,11 +330,18 @@
         } else if (otherFee.trading > 8.3)  {
           otherFee.trading = 8.3;
         }        
+
+        
+        // NMS股票：0.000046/股 | OTC股票：0.00000046/股 
+        otherFee.audit = audit_rate * qty; 
+        if (otherFee.audit < 0.01) {
+          otherFee.audit = 0.01;
+        }        
         
         if ( bs == "buy" ){
-          otherFee.total = otherFee.commission + otherFee.platform + otherFee.settlement; 
+          otherFee.total = otherFee.commission + otherFee.platform + otherFee.settlement + otherFee.audit; 
         } else {
-          otherFee.total = otherFee.commission + otherFee.platform + otherFee.settlement + otherFee.sec + otherFee.trading; 
+          otherFee.total = otherFee.commission + otherFee.platform + otherFee.settlement + otherFee.trading + otherFee.audit; 
         }
         return otherFee;
     }    
