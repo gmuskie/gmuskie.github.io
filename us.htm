@@ -311,6 +311,8 @@
         otherFee.commission = commission_rate * qty;
         if (otherFee.commission < 0.99) {
           otherFee.commission = 0.99; 
+        } else {
+          otherFee.commission = roundUp2Decimals(otherFee.commission);        
         }
 
         // fix platorm charge $0.005/Share, minimum $1/order
@@ -365,6 +367,14 @@
       inputField.value = '';
     }
 
+    function roundUp2Decimals(num) {
+      //normal round;
+      //return Math.round(num * 100) / 100;
+      
+      return Math.ceil(num * 100) / 100;
+    }
+
+    
 
   </script>
 
