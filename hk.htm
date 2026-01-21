@@ -277,11 +277,12 @@
 
     function getOtherFee(consideration) {
         // Rate
-        var ad_val_stamp_rate = 0.001;   // 印花稅
-        var settlement_rate = 0.00002;   // 交收費 
-        var trading_rate = 0.0000565;    // 交易費
-        var xact_levy_rate = 0.000027;   // 證監會徵費
-        var frc_levy_rate = 0.0000015;   // 財匯局徵費       
+        // var settlement_rate = 0.00002;   // 交收費 HKEX
+        var settlement_rate = 0.000042;   // 交收費 HKEX
+        var ad_val_stamp_rate = 0.001;   // 印花稅 HK Government        
+        var trading_rate = 0.0000565;    // 交易費 HKEX
+        var xact_levy_rate = 0.000027;   // 證監會徵費 SFC
+        var frc_levy_rate = 0.0000015;   // 財匯局徵費  SFC   
         var otherFee = {};
         
         // Fee        
