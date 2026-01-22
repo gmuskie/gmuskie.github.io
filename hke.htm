@@ -288,12 +288,8 @@
         // Fee        
         otherFee.platform = 15; // 平台使用費
                 
-        otherFee.adValStamp = ad_val_stamp_rate * consideration;  // 印花稅 | 每宗交易額之 0.1%" | 不足一元 亦作一元計算   
-        if (otherFee.adValStamp < 1) {
-            otherFee.adValStamp = 1;
-        }
-        otherFee.adValStamp = Math.ceil(otherFee.adValStamp);
-
+        otherFee.adValStamp = 0;  // 印花稅 | No ad_val_stamp for ETF
+      
         otherFee.settlement = settlement_rate * consideration;  // 交收費 
                
         otherFee.trading = trading_rate * consideration; // 交易費      
