@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script>
+
+    
+    var price, qty, bidSize, consideration, buyTotalAmount, sellTotalAmount, el_containerDiv;
+
+    function init() {
+      setupForm();
+    }
+
+
+    function setupForm() {
+      const form = document.createElement('form');
+      form.onsubmit = main; // Call main() on form submission
+
+      const priceLabel = document.createElement('label');
+      priceLabel.textContent = 'Price: ';
+      const priceInput = document.createElement('input');
+      priceInput.setAttribute('id', 'price');
+      priceInput.setAttribute('type', 'number');
+      priceInput.setAttribute('name', 'price');
+      priceInput.setAttribute('step', 'any');
+      priceInput.setAttribute('onclick', "clearField(this)");
+      priceInput.setAttribute('required', "");
+      priceLabel.appendChild(priceInput);
+
+      const qtyLabel = document.createElement('label');
+      qtyLabel.textContent = 'Qty: ';
+      const qtyInput = document.createElement('input');
+      qtyInput.setAttribute('id', 'qty');
+      qtyInput.setAttribute('type', 'number');
+      qtyInput.setAttribute('name', 'qty');
+      qtyInput.setAttribute('onclick', "clearField(this)");
+      qtyInput.setAttribute('required', "");
+      qtyLabel.appendChild(qtyInput);
+          
+      const submitButton = document.createElement('input');
+      submitButton.setAttribute('type', 'submit');
+      submitButton.setAttribute('value', 'Submit');
+
+      form.appendChild(priceLabel);
+      form.appendChild(document.createElement('br'));
+      form.appendChild(document.createElement('br'));
+      form.appendChild(qtyLabel);
+      form.appendChild(document.createElement('br'));
+      form.appendChild(document.createElement('br'));
+      form.appendChild(submitButton);
+      
+      form.appendChild(document.createElement('br'));
+
+      document.body.appendChild(form);
+      priceInput.focus();
+
+    }
+      
+    function setTable() {
+      // Clear the previous table, if it exists
+      var previousTable = document.getElementById("mainTable");
+      if (previousTable) {
+        previousTable.remove();
+      }
+
+      var previousBottomSection = document.getElementById("bottom-section");
+      if (previousBottomSection) {
+        previousBottomSection.remove();
+      }
+
+      var el_bottomDiv = document.createElement("div");
+      el_bottomDiv.id = "bottom-section";
+      el_bottomDiv.classList.add("bottom-section");
+
+      var tHeader = ["","Price", "Qty", "G/L HKD", "BidSize", "Consideration", "Platform", "Settlement",	
+                     "AdValStamp"," Trading", "XactLevy", "FRCLevy", "OtherTotal", "TotalAmount", "GainLoss(%)"]; 
+
+      var sellId = ["s_title","s_Price","s_Qty", "s_GL_HKD", "s_BidSize", "s_Consideration", "s_Platform", "s_Settlement",	
+                    "AdValStamp", "s_Trading", "s_XactLevy", "s_FRCLevy", "s_OtherTotal", "s_TotalAmount", "s_GainLoss"];
+
+      var el_table = document.createElement("table");
+      el_table.id = "mainTable";      
+      el_table.classList.add("mainTable");
+    
+      var thead = document.createElement("thead");
+      var tr = document.createElement("tr");      
+
+      var consideration = price * qty;
+      var otherFee = getOtherFee(consideration)
+      
+      buyTotalAmount = consideration + otherFee.total;
+      var tBody = [["Buy", 
+                    fmtDecimal(price),
+                    fmtNoDecimal(qty),
+                    fmtDecimal(0),
+                    fmtDecimal(bidSize),
+                    fmtDecimal(consideration),
+                    fmtDecimal(otherFee.platform), 
+                    fmtDecimal(otherFee.settlement), 
+                    fmtDecimal(otherFee.adValStamp),                     
+                    fmtDecimal(otherFee.trading), 
+                    fmtDecimal(otherFee.xactLevy), 
+                    fmtDecimal(otherFee.frcLevy),                     
+                    fmtDecimal(otherFee.total),
+                    fmtDecimal(buyTotalAmount),
+                    "0"],
+                   ];      
+                   
+      var maxRow = 500;
+      var curBuyPrice = price;
+      var curSellPrice = price + bidSize;
+        
+      // Create table heading cells
+      for (var i = 0; i < tHeader.length; i++) {
+        var th = document.createElement("th");
+        th.textContent = tHeader[i];    // equal to td
+        tr.appendChild(th);
+      }
+      thead.appendChild(tr);
+      el_table.appendChild(thead);
+
+      // table body - buy
+      for (var i = 0; i < tBody.length; i++) {
+        var row = document.createElement("tr");
+        for (var j = 0; j < tBody[i].length; j++) {
+          var el_td = document.createElement("td");
+          if (i == 1) {
+            el_td.setAttribute('id', sellId[j] );
+          }
+
+          el_td.textContent = tBody[i][j];
+          el_td.style.textAlign = "right";
+          row.appendChild(el_td);
+        }
+        el_table.appendChild(row);
+      }
+      
+      // table body => sell
+      for (var i = 0; i <= maxRow; i++) {
+        consideration = curSellPrice * qty;
+        otherFee = getOtherFee(consideration)
+        sellTotalAmount = consideration - otherFee.total;
+        gl = sellTotalAmount - buyTotalAmount;
+        glPcent = (curSellPrice - price) / price * 100;
+        
+        var tSellBody = ["Sell", 
+                    fmtDecimal(curSellPrice),
+                    fmtNoDecimal(qty),
+                    fmtDecimal(gl),
+                    fmtDecimal(bidSize),
+                    fmtDecimal(consideration),
+                    fmtDecimal(otherFee.platform), 
+                    fmtDecimal(otherFee.settlement), 
+                    fmtDecimal(otherFee.adValStamp),                     
+                    fmtDecimal(otherFee.trading), 
+                    fmtDecimal(otherFee.xactLevy), 
+                    fmtDecimal(otherFee.frcLevy), 
+                    fmtDecimal(otherFee.total),
+                    fmtDecimal(sellTotalAmount),
+                    fmtDecimal(gl) + " (" + fmtDecimal(glPcent) + ")",                    
+                   ];      
+
+
+        var row = document.createElement("tr");
+        for (var j = 0; j < tSellBody.length; j++) {        
+        
+          var el_td = document.createElement("td");
+          var buyingCost = getCost(curBuyPrice, qty, "buy")
+          var buyingCost = getCost(curSellPrice, qty, "sell");
+         
+          el_td.setAttribute('id', sellId[j] );
+
+          //el_td.textContent = tSellBody[i][j];
+          el_td.textContent = tSellBody[j];
+          el_td.style.textAlign = "right";
+          row.appendChild(el_td);
+        }
+        el_table.appendChild(row);
+        curSellPrice += bidSize; 
+      }
+
+      // Append the table to the document body
+      el_bottomDiv.appendChild(el_table);
+      document.body.appendChild(el_bottomDiv);      
+    }
+
+    
+    function main() {
+      // Prevent form submission
+      event.preventDefault();
+
+      // setupForm();
+
+      price = document.getElementById("price").value;
+      price = parseFloat(price);
+      qty = document.getElementById("qty").value;
+      qty = parseFloat(qty);      
+      bidSize = getBidSize(price);
+      bidSize = parseFloat(bidSize);      
+      consideration = price * qty;
+      
+      setTable(); 
+
+    }
+
+
+    function fmtDecimal(num) {
+      // Multiply by 1000 to shift the decimal point
+      //const shifted = Math.round(num * 1000);
+      const shifted = num * 1000;
+      
+      // Extract the first two decimal places
+      const wholePart = Math.floor(shifted / 10); // Get the whole number part
+
+      const decimalPart = shifted % 10; // Get the third decimal place
+
+      // If the third decimal place is greater than 1, add it to the second decimal place
+      if (decimalPart > 1) {
+          newNum = (wholePart + 1) / 100; // Add 1 to the second decimal place
+      } else {
+        newNum = wholePart / 100; // Just return the number with two decimal places
+      }
+
+      return newNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      
+      
+    }
+
+
+    function fmtNoDecimal(n) {
+      return n.toLocaleString();
+    }
+
+    function getBidSize(price) {
+    // https://www.hkex.com.hk/-/media/HKEX-Market/Services/Rules-and-Forms-and-Fees/Rules/SEHK/Securities/Rules/Sch_02.pdf
+
+        var bidSize = 0;
+        if (price <= 0.25) {
+          bidSize = 0.001;
+        } else if (price <= 0.5) {
+          bidSize = 0.005;
+        } else if (price <= 10) {
+          bidSize = 0.01;
+        } else if (price <= 20) {
+          bidSize = 0.02;
+        } else if (price <= 100) {
+          bidSize = 0.05;
+        } else if (price <= 200) {
+          bidSize = 0.1;
+        } else if (price <= 500) {
+          bidSize = 0.2;
+        } else if (price <= 1000) {
+          bidSize = 0.5;
+        } else if (price <= 2000) {
+          bidSize = 1;
+        } else if (price <= 5000) {
+          bidSize = 2;
+        } else if (price <= 9995) {
+          bidSize = 5;
+        }
+        
+        return bidSize;
+    }
+
+
+    function getCost(price, qty, bs) {
+      var consideration = price * qty;
+      var otherFee = getOtherFee(consideration);
+      if (bs == "buy"){                
+        var total = consideration + otherFee.total;
+      } else {
+        var total = consideration - otherFee.total;
+      }
+
+      return total;
+    }
+
+
+    function getOtherFee(consideration) {
+        // Rate
+        // var settlement_rate = 0.00002;   // 交收費 HKEX
+        var settlement_rate = 0.000042;   // 交收費 HKEX
+        var ad_val_stamp_rate = 0;   // 印花稅 HK Government        
+        var trading_rate = 0.0000565;    // 交易費 HKEX
+        var xact_levy_rate = 0.000027;   // 證監會徵費 SFC
+        var frc_levy_rate = 0.0000015;   // 財匯局徵費  SFC   
+        var otherFee = {};
+        
+        // Fee        
+        otherFee.platform = 15; // 平台使用費
+                
+        otherFee.adValStamp = ad_val_stamp_rate * consideration;  // 印花稅 | 每宗交易額之 0.1%" | 不足一元 亦作一元計算   
+        if (otherFee.adValStamp < 1) {
+            otherFee.adValStamp = 1;
+        }
+        otherFee.adValStamp = Math.ceil(otherFee.adValStamp);
+
+        otherFee.settlement = settlement_rate * consideration;  // 交收費 
+               
+        otherFee.trading = trading_rate * consideration; // 交易費      
+        
+        otherFee.xactLevy = xact_levy_rate * consideration;  // 證監會徵費        
+        
+        otherFee.frcLevy = frc_levy_rate * consideration;   // 財匯局徵費        
+        
+        otherFee.total = otherFee.platform + otherFee.adValStamp + otherFee.settlement + otherFee.trading  + otherFee.xactLevy + otherFee.frcLevy;       
+
+        return otherFee;
+    }    
+    
+
+    function setCursorFocus() {
+      var inputField = document.getElementById("price");
+      inputField.focus();
+    }
+
+
+    function handleKeyPress(event) {
+      if (event.keyCode === 13) { // 13 is the key code for Enter
+        event.preventDefault(); // Prevent the default form submission
+        main();
+      }
+    }
+
+
+    function clearField(inputField) {     
+      inputField.value = '';
+    }
+
+
+  </script>
+
+
+  <style>
+  
+
+    .top-section {
+      height: 25vh; /* Adjust the height of the top section as needed */
+      overflow: auto;
+    }
+
+    .bottom-section {
+      height: 60vh; /* Adjust the height of the bottom section as needed */
+      overflow: auto;
+      
+    }
+
+
+    th:first-child {
+      position: sticky;
+      left: 5;
+      background-color: grey;
+      font-weight: bold;
+      z-index: 0;
+    }
+
+    
+    .table-container {
+      top: 500;
+      width: 100%;
+
+      height: 100px;
+      overflow: auto;
+    }
+
+
+    th,
+    td {
+      border: 1px solid black;
+      padding: 8px;
+      background-color: grey;      
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background-color: grey;
+      
+    }
+
+    body {
+      background-color: lightgray;
+    }
+
+  </style>
+</head>
+<body>
+  <script>
+    // Call the setupForm function when the web page loads
+    window.addEventListener('load', init);
+  </script>
+  
+
+
+</body>
+</html>
