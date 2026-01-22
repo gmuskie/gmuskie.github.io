@@ -294,13 +294,7 @@
         }
         otherFee.adValStamp = Math.ceil(otherFee.adValStamp);
 
-
-        otherFee.settlement = settlement_rate * consideration;  // 交收費 | 0.002% * 成交金額 | 最低 2港元 | 最高 100港元
-        if (otherFee.settlement > 100){
-            otherFee.settlement = 100;
-        } else if (otherFee.settlement < 2 ) {
-            otherFee.settlement = 2;
-        }
+        otherFee.settlement = settlement_rate * consideration;  // 交收費 
                
         otherFee.trading = trading_rate * consideration; // 交易費      
         
