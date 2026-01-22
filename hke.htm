@@ -6,7 +6,7 @@
     var price, qty, bidSize, consideration, buyTotalAmount, sellTotalAmount, el_containerDiv;
 
     function roundTo2(num) {
-      return Math.round((num + Number.EPSILON) * 100) / 100;
+      return Math.round((num) * 100) / 100;
     }
 
     function init() {
@@ -294,14 +294,16 @@
         otherFee.adValStamp = 0;  // 印花稅 | No ad_val_stamp for ETF
       
         otherFee.settlement = settlement_rate * consideration;  // 交收費 
-               
+        otherFee.settlement = roundTo2(otherFee.settlement);
+                       
         otherFee.trading = trading_rate * consideration; // 交易費      
-        
+        otherFee.trading = roundTo2(otherFee.trading);
+
         otherFee.xactLevy = xact_levy_rate * consideration;  // 證監會徵費        
         otherFee.xactLevy = roundTo2(otherFee.xactLevy);
         
         otherFee.frcLevy = frc_levy_rate * consideration;   // 財匯局徵費        
-        otherFee.xactLevy = roundTo2(otherFee.xactLevy);
+        otherFee.frcLevy = roundTo2(otherFee.frcLevy);
         
         otherFee.total = otherFee.platform + otherFee.adValStamp + otherFee.settlement + otherFee.trading  + otherFee.xactLevy + otherFee.frcLevy;       
 
