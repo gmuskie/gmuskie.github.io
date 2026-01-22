@@ -6,7 +6,7 @@
     var price, qty, bidSize, consideration, buyTotalAmount, sellTotalAmount, el_containerDiv;
 
     function roundTo2(num) {
-      return Math.round((num) * 100) / 100;
+      return Math.round((num + Number.EPSILON) * 100) / 100;
     }
 
     function init() {
