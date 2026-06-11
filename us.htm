@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -183,7 +184,7 @@ function calculate() {
 
         const commission = Math.max(qty * 0.0049, 0.99);
         const platform = Math.max(qty * 0.005, 1);
-        const settlement = qty * 0.003;
+        const settlement = roundUp2(qty * 0.003);
 
         let sec = 0;
         if (i !== 0) {
