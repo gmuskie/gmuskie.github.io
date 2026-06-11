@@ -1,10 +1,10 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>US Stock Trading Amount Calculator</title>
+
 
 <!--
 ref: https://www.futuhk.com/en/commissionnew
@@ -30,6 +30,7 @@ Consolidated Audit Trail Fees
 NMS Stocks：$0.000003/Share
 OTC Stocks：$0.00000003/Share    FINRA
 -->
+
 
 <style>
     body {
@@ -108,6 +109,12 @@ OTC Stocks：$0.00000003/Share    FINRA
 
     .sell {
         background-color: #fff7e6;
+    }
+
+    /* Target table cells on hover to override .buy / .sell classes */
+    tbody tr:hover td {
+        background-color: #e2e2e2 !important; 
+        cursor: pointer;
     }
 </style>
 </head>
