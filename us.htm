@@ -1,444 +1,238 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>US Stock Trading Amount Calculator</title>
 
-    /*
-      ref: https://www.futuhk.com/commissionnew?lang=zh-hk
+<!--
+ref: https://www.futuhk.com/en/commissionnew
 
-      類型|費用|收費方 
-      佣金|每股0.0049 美元，每筆訂單最低0.99美元|富途證券 (Commission)
-      固定式平台使用費|每股0.005美元，每筆訂單最低1美元|富途證券 (Fixed platform fees)
-      階梯式平台使用費（每月交易股數）|每股（每筆訂單最低1美元）|富途證券 (Tiered platorm fees)
-        第1-500股|0.0100美元
-        第501-1,000股|0.0080美元
-        第1,001-5,000股|0.0070美元
-        第5,001-10,000股|0.0060美元
-        第10,001-50,000股|0.0055美元
-        第50,001-200,000股|0.0050美元
-        第200,001-500,000股|0.0045美元
-        第500,001-1,000,000股|0.0040美元
-        第1,000,001-5,000,000股|0.0035美元
-        第5,000,001股以上|0.0030美元
-      交收費|0.003美元*成交股數|美國結算機構等 (Settlement fees)
-      交易活動費|0.000166 美元*賣出股數，每次成交最低0.01 美元，最高8.30 美元（僅賣出收取）|美國金融業監管局 (Trading Activity fees)
-      綜合審計跟蹤監管費 | NMS股票：0.000046/股 | OTC股票：0.00000046/股 | 美國金融業管理局 | Consolidated Audit Trail Fees
-      
-    */
-    var price, qty, bidSize, consideration, buyTotalAmount, sellTotalAmount, el_containerDiv;
+Item    Fees    Charged by
+Commission    $0.0049/Share, minimum $0.99/order    FUTU HK
+Fixed platform fees    $0.005/Share, minimum $1/order    FUTU HK
+Tiered platform fees (Accumlated monthly shares)    Fees per share (minimum $1/order)    FUTU HK
+1-500th shares    $0.0100
+501-1,000th shares    $0.0080
+1,001-5,000th shares    $0.0070
+5,001-10,000th shares    $0.0060
+10,001-50,000th shares    $0.0055
+50,001-200,000th shares    $0.0050
+200,001-500,000th shares    $0.0045
+500,001-1,000,000th shares    $0.0040
+1,000,001-5,000,000th shares    $0.0035
+5,000,001st shares and above    $0.0030
+Settlement Fees    $0.003/Share    U.S. Settlement Agency
+SEC fees    $0.0000206 * transaction amount, min $0.01/trade    SEC
+Trading Activity Fees    $0.000195/Share, min $0.01/Trade, max $9.79/Trade    FINRA
+Consolidated Audit Trail Fees
+NMS Stocks：$0.000003/Share
+OTC Stocks：$0.00000003/Share    FINRA
+-->
 
-    function init() {
-      setupForm();
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 15px;
+        font-size: 14px;
     }
 
-
-    function setupForm() {
-      const form = document.createElement('form');
-      form.onsubmit = main; // Call main() on form submission
-
-      const priceLabel = document.createElement('label');
-      priceLabel.textContent = 'Price: ';
-      const priceInput = document.createElement('input');
-      priceInput.setAttribute('id', 'price');
-      priceInput.setAttribute('type', 'number');
-      priceInput.setAttribute('name', 'price');
-      priceInput.setAttribute('step', 'any');
-      priceInput.setAttribute('onclick', "clearField(this)");
-      priceInput.setAttribute('required', "");
-      priceLabel.appendChild(priceInput);
-
-      const qtyLabel = document.createElement('label');
-      qtyLabel.textContent = 'Qty: ';
-      const qtyInput = document.createElement('input');
-      qtyInput.setAttribute('id', 'qty');
-      qtyInput.setAttribute('type', 'number');
-      qtyInput.setAttribute('name', 'qty');
-      qtyInput.setAttribute('onclick', "clearField(this)");
-      qtyInput.setAttribute('required', "");
-      qtyLabel.appendChild(qtyInput);
-
-      const bidsizeLabel = document.createElement('label');
-      bidsizeLabel.textContent = 'BidSize: ';
-      const bidsizeInput = document.createElement('input');
-      bidsizeInput.setAttribute('id', 'bidsize');
-      bidsizeInput.setAttribute('type', 'number');
-      bidsizeInput.setAttribute('step', 'any');
-      bidsizeInput.setAttribute('name', 'bidsize');
-      bidsizeInput.setAttribute('onclick', "clearField(this)");
-      bidsizeInput.setAttribute('required', "");
-      bidsizeLabel.appendChild(bidsizeInput);
-      bidsizeInput.setAttribute("value", "0.01");
-      
-      const submitButton = document.createElement('input');
-      submitButton.setAttribute('type', 'submit');
-      submitButton.setAttribute('value', 'Submit');
-
-      form.appendChild(priceLabel);
-      form.appendChild(document.createElement('br'));
-      form.appendChild(document.createElement('br'));
-      form.appendChild(qtyLabel);
-      form.appendChild(document.createElement('br'));
-      form.appendChild(document.createElement('br'));
-      form.appendChild(bidsizeLabel);
-      form.appendChild(document.createElement('br'));
-      form.appendChild(document.createElement('br'));
-      form.appendChild(submitButton);
-      
-      form.appendChild(document.createElement('br'));
-
-      document.body.appendChild(form);
-      priceInput.focus();
-
-    }
-  
-        
-    function setTable() {
-      // Clear the previous table, if it exists
-      var previousTable = document.getElementById("mainTable");
-      if (previousTable) {
-        previousTable.remove();
-      }
-
-      var previousBottomSection = document.getElementById("bottom-section");
-      if (previousBottomSection) {
-        previousBottomSection.remove();
-      }
-
-      var el_bottomDiv = document.createElement("div");
-      el_bottomDiv.id = "bottom-section";
-      el_bottomDiv.classList.add("bottom-section");
-
-      var tHeader = ["","Price", "Qty", "G/L HKD", "BidSize", "Consideration","Commission", "Platform",
-              "Settlement",	"Trading", "Audit", " OtherTotal", "TotalAmount", "GainLoss(%)"]; 
-
-      var sellId = ["s_title","s_Price", , "s_GL_HKD", "s_Qty", "s_BidSize", "s_Consideration", "s_Platform","s_Commission",	
-                    "s_Settlement",	"s_Trading", "s_Audit", "s_OtherTotal", "s_TotalAmount", "s_GainLoss"];
-
-      var el_table = document.createElement("table");
-      el_table.id = "mainTable";      
-      el_table.classList.add("mainTable");
-    
-      var thead = document.createElement("thead");
-      var tr = document.createElement("tr");      
-
-      var consideration = price * qty;
-      var otherFee = getOtherFee(price, qty, "buy")
-      
-      buyTotalAmount = consideration + otherFee.total;
-      var tBody = [["Buy", 
-                    fmtDecimal(price),
-                    fmtNoDecimal(qty),
-                    fmtDecimal(0),
-                    fmtDecimal(bidSize),
-                    fmtDecimal(consideration),
-                    fmtDecimal(otherFee.commission), 
-                    fmtDecimal(otherFee.platform), 
-                    fmtDecimal(otherFee.settlement),
-                    fmtDecimal(0),  //otherFee.trading
-                    fmtDecimal(otherFee.audit),  //otherFee.audit
-                    fmtDecimal(otherFee.total),
-                    fmtDecimal(buyTotalAmount),
-                    "0", ],
-                   ];      
-                   
-      var maxRow = 500;
-      var curBuyPrice = price;
-      var curSellPrice = price + bidSize;
-        
-      // Create table heading cells
-      for (var i = 0; i < tHeader.length; i++) {
-        var th = document.createElement("th");
-        th.textContent = tHeader[i];    // equal to td
-        tr.appendChild(th);
-      }
-      thead.appendChild(tr);
-      el_table.appendChild(thead);
-
-      // table body - buy
-      for (var i = 0; i < tBody.length; i++) {
-        var row = document.createElement("tr");
-        for (var j = 0; j < tBody[i].length; j++) {
-          var el_td = document.createElement("td");
-          if (i == 1) {
-            el_td.setAttribute('id', sellId[j] );
-          }
-
-          el_td.textContent = tBody[i][j];
-          el_td.style.textAlign = "right";
-          row.appendChild(el_td);
-        }
-        el_table.appendChild(row);
-      }
-      
-      // table body => sell
-      for (var i = 0; i <= maxRow; i++) {
-        consideration = curSellPrice * qty;
-        otherFee = getOtherFee(price, qty, "sell")
-        sellTotalAmount = consideration - otherFee.total;
-        gl = sellTotalAmount - buyTotalAmount;
-        glPcent = (curSellPrice - price) / price * 100;
-        var tSellBody = ["Sell", 
-                    fmtDecimal(curSellPrice),
-                    fmtNoDecimal(qty),
-                    fmtDecimal(gl * 7.7),
-                    fmtDecimal(bidSize),
-                    fmtDecimal(consideration),
-                    fmtDecimal(otherFee.commission), 
-                    fmtDecimal(otherFee.platform), 
-                    fmtDecimal(otherFee.settlement), 
-                    fmtDecimal(otherFee.trading), 
-                    fmtDecimal(otherFee.audit), 
-                    fmtDecimal(otherFee.total),
-                    fmtDecimal(sellTotalAmount),
-                    fmtDecimal(gl) + " (" + fmtDecimal(glPcent) + ")",
-                   ];
-
-                   var row = document.createElement("tr");
-        for (var j = 0; j < tSellBody.length; j++) {        
-        
-          var el_td = document.createElement("td");
-          var buyingCost = getCost(curBuyPrice, qty, "buy")
-          var buyingCost = getCost(curSellPrice, qty, "sell");
-
-          
-
-          if (i == 1) {
-            el_td.setAttribute('id', sellId[j] );
-          }
-
-
-          //el_td.textContent = tSellBody[i][j];
-          el_td.textContent = tSellBody[j];
-          el_td.style.textAlign = "right";
-          row.appendChild(el_td);
-        }
-        el_table.appendChild(row);
-        curSellPrice += bidSize; 
-      }
-
-      // Append the table to the document body
-      el_bottomDiv.appendChild(el_table);
-      document.body.appendChild(el_bottomDiv);      
+    h2 {
+        text-align: center;
     }
 
-    
-    function main() {
-      // Prevent form submission
-      event.preventDefault();
-
-      // setupForm();
-
-      price = document.getElementById("price").value;
-      price = parseFloat(price);
-      qty = document.getElementById("qty").value;
-      qty = parseFloat(qty);      
-      bidSize = document.getElementById("bidsize").value;
-      bidSize = parseFloat(bidSize);
-      
-      consideration = price * qty;
-      
-      setTable(); 
-
+    .input-group {
+        margin-bottom: 12px;
     }
 
-
-    function fmtDecimal(n) {
-      return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
     }
 
-
-    function fmtNoDecimal(n) {
-      return n.toLocaleString();
+    input {
+        width: 20ch;
+        max-width: 100%;
+        padding: 6px;
+        font-size: 15px;
+        box-sizing: border-box;
     }
 
-
-    function getBidSize(price) {
-    // https://www.hkex.com.hk/-/media/HKEX-Market/Services/Rules-and-Forms-and-Fees/Rules/SEHK/Securities/Rules/Sch_02.pdf
-
-        var bidSize = 0;
-        if (price <= 0.25) {
-          bidSize = 0.001;
-        } else if (price <= 0.5) {
-          bidSize = 0.01;
-        } else if (price <= 10) {
-          bidSize = 0.01;
-        } else if (price <= 20) {
-          bidSize = 0.01;
-        } else if (price <= 100) {
-          bidSize = 0.01;
-        } else if (price <= 200) {
-          bidSize = 0.01;
-        } else if (price <= 500) {
-          bidSize = 0.01;
-        } else if (price <= 1000) {
-          bidSize = 0.01;
-        } else if (price <= 2000) {
-          bidSize = 0.01;
-        } else if (price <= 5000) {
-          bidSize = 0.01;
-        } else if (price <= 9995) {
-          bidSize = 5;
-        }
-        
-        return bidSize;
+    button {
+        display: block;
+        margin-top: 10px;
+        padding: 8px 14px;
+        font-size: 15px;
+        cursor: pointer;
     }
 
-
-    function getCost(price, qty, bs) {
-      var consideration = price * qty;
-      var otherFee = getOtherFee(price, qty, bs);
-      if (bs == "buy"){                
-        var total = consideration + otherFee.total;
-      } else {
-        var total = consideration - otherFee.total;
-      }
-
-      return total;
+    .table-wrapper {
+        margin-top: 20px;
+        max-height: 360px;
+        overflow-y: auto;
+        overflow-x: auto;
+        border: 1px solid #ccc;
     }
 
-
-    function getOtherFee(price, qty, bs) {
-        // Rate
-        var commission_rate = 0.0049    // $0.0049/Share, minimum $0.99/order | Futu
-        var fixed_platform_rate = 0.005 // $0.005/Share, minimum $1/order | Futu
-        var settlement_rate = 0.003;    // $0.003/Share
-        var sec_rate = 0.0000278         // $0.0000278 * transaction amount, min $0.01/trade (sells only) cancelled from May 14 2025,EST)
-        var trading_rate = 0.000166;    // $0.000166/Share, min $0.01/trade, max $8.30/trade (sells only)
-        var audit_rate = 0.000046;      // NMS股票：0.000046/股 | OTC股票：0.00000046/股 
-        var otherFee = {};
-
-        // $0.0049/Share, minimum $0.99/order
-        otherFee.commission = commission_rate * qty;
-        if (otherFee.commission < 0.99) {
-          otherFee.commission = 0.99; 
-        } else {
-          otherFee.commission = roundUp2Decimals(otherFee.commission);        
-        }
-
-        // fix platorm charge $0.005/Share, minimum $1/order
-        otherFee.platform = qty * 0.005;
-        if (otherFee.platform < 1) {
-          otherFee.platform = 1; 
-        }
-
-        // $0.003/Share
-        otherFee.settlement = settlement_rate * qty; 
-        
-
-        // $0.000166/Share, min $0.01/trade, max $8.30/trade (sells only)  
-        otherFee.trading = trading_rate * qty; 
-        if (otherFee.trading < 0.01) {
-          otherFee.trading = 0.01;
-        } else if (otherFee.trading > 8.3)  {
-          otherFee.trading = 8.3;
-        }        
-
-        
-        // NMS股票：0.000046/股 | OTC股票：0.00000046/股 
-        otherFee.audit = audit_rate * qty; 
-        if (otherFee.audit < 0.01) {
-          otherFee.audit = 0.01;
-        }        
-        
-        if ( bs == "buy" ){
-          otherFee.total = otherFee.commission + otherFee.platform + otherFee.settlement + otherFee.audit; 
-        } else {
-          otherFee.total = otherFee.commission + otherFee.platform + otherFee.settlement + otherFee.trading + otherFee.audit; 
-        }
-        return otherFee;
-    }    
-    
-
-    function setCursorFocus() {
-      var inputField = document.getElementById("price");
-      inputField.focus();
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 1400px;
+        font-size: 13px;
     }
 
-
-    function handleKeyPress(event) {
-      if (event.keyCode === 13) { // 13 is the key code for Enter
-        event.preventDefault(); // Prevent the default form submission
-        main();
-      }
-    }
-
-
-    function clearField(inputField) {     
-      inputField.value = '';
-    }
-
-    function roundUp2Decimals(num) {
-      //normal round;
-      //return Math.round(num * 100) / 100;
-      
-      return Math.ceil(num * 100) / 100;
-    }
-
-    
-
-  </script>
-
-
-  <style>
-  
-
-    .top-section {
-      height: 25vh; /* Adjust the height of the top section as needed */
-      overflow: auto;
-    }
-
-    .bottom-section {
-      height: 60vh; /* Adjust the height of the bottom section as needed */
-      overflow: auto;
-      
-    }
-
-
-    th:first-child {
-      position: sticky;
-      left: 5;
-      background-color: grey;
-      font-weight: bold;
-      z-index: 0;
-    }
-
-    
-    .table-container {
-      top: 500;
-      width: 100%;
-
-      height: 100px;
-      overflow: auto;
-    }
-
-
-    th,
-    td {
-      border: 1px solid black;
-      padding: 8px;
-      background-color: grey;      
+    th, td {
+        border: 1px solid #ccc;
+        padding: 6px;
+        text-align: right;
+        white-space: nowrap;
     }
 
     th {
-      position: sticky;
-      top: 0;
-      background-color: grey;
-      
+        background-color: #f0f0f0;
+        text-align: center;
+        position: sticky;
+        top: 0;
+        z-index: 2;
     }
 
-    body {
-      background-color: lightgray;
+    td:first-child, th:first-child {
+        text-align: center;
     }
 
-  </style>
+    .buy {
+        background-color: #e8f7ff;
+    }
+
+    .sell {
+        background-color: #fff7e6;
+    }
+</style>
 </head>
-<body>
-  <script>
-    // Call the setupForm function when the web page loads
-    window.addEventListener('load', init);
-  </script>
-  
 
+<body>
+
+<h2>US Stock Trading Amount Calculator</h2>
+
+<div class="input-group">
+    <label>Price</label>
+    <input type="number" id="price" step="0.01">
+</div>
+
+<div class="input-group">
+    <label>Quantity</label>
+    <input type="number" id="qty">
+</div>
+
+<div class="input-group">
+    <label>Bid Size</label>
+    <input type="number" id="bidsize" step="0.01">
+</div>
+
+<button onclick="calculate()">Calculate</button>
+
+<div class="table-wrapper">
+<table id="resultTable">
+    <thead>
+        <tr>
+            <th>Price</th>
+            <th>Qty</th>
+            <th>G/L HKD</th>
+            <th>BidSize</th>
+            <th>Consideration</th>
+            <th>Commission</th>
+            <th>Platform</th>
+            <th>Settlement</th>
+            <th>SEC</th>
+            <th>Trading</th>
+            <th>OtherTotal</th>
+            <th>TotalAmount</th>
+            <th>GainLoss(%)</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+</div>
+
+<script>
+function roundUp2(num) {
+    return Math.ceil(num * 100) / 100;
+}
+
+function calculate() {
+    const price = parseFloat(document.getElementById("price").value);
+    const qty = parseInt(document.getElementById("qty").value);
+    const bidSize = parseFloat(document.getElementById("bidsize").value);
+
+    if (!price || !qty || !bidSize) {
+        alert("Please enter all inputs");
+        return;
+    }
+
+    const rows = 100;
+    const tbody = document.querySelector("#resultTable tbody");
+    tbody.innerHTML = "";
+
+    let buyTotalAmount = 0;
+
+    for (let i = 0; i < rows; i++) {
+        const tradePrice = (i === 0) ? price : price + bidSize * i;
+        const consideration = tradePrice * qty;
+
+        const commission = Math.max(qty * 0.0049, 0.99);
+        const platform = Math.max(qty * 0.005, 1);
+        const settlement = qty * 0.003;
+
+        let sec = 0;
+        if (i !== 0) {
+            sec = roundUp2(Math.max(consideration * 0.0000206, 0.01));
+        }
+
+        let trading = 0;
+        if (i !== 0) {
+            trading = qty * 0.000195;
+            trading = Math.min(Math.max(trading, 0.01), 9.79);
+            trading = roundUp2(trading);
+        }
+
+        const otherTotal = commission + platform + settlement + sec + trading;
+
+        let totalAmount;
+        if (i === 0) {
+            totalAmount = consideration + otherTotal;
+            buyTotalAmount = totalAmount;
+        } else {
+            totalAmount = consideration - otherTotal;
+        }
+
+        const gainLossUSD = (i === 0) ? 0 : (totalAmount - buyTotalAmount);
+        const gainLossHKD = gainLossUSD * 7.8;
+        const gainLossPct = (i === 0) ? 0 : (gainLossUSD / buyTotalAmount) * 100;
+
+        const tr = document.createElement("tr");
+        tr.className = (i === 0) ? "buy" : "sell";
+
+        tr.innerHTML = `
+            <td>${tradePrice.toFixed(2)}</td>
+            <td>${qty}</td>
+            <td>${gainLossHKD.toFixed(2)}</td>
+            <td>${bidSize.toFixed(2)}</td>
+            <td>${consideration.toFixed(2)}</td>
+            <td>${commission.toFixed(2)}</td>
+            <td>${platform.toFixed(2)}</td>
+            <td>${settlement.toFixed(2)}</td>
+            <td>${sec.toFixed(2)}</td>
+            <td>${trading.toFixed(2)}</td>
+            <td>${otherTotal.toFixed(2)}</td>
+            <td>${totalAmount.toFixed(2)}</td>
+            <td>${gainLossPct.toFixed(2)}%</td>
+        `;
+
+        tbody.appendChild(tr);
+    }
+}
+</script>
 
 </body>
 </html>
