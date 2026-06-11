@@ -127,7 +127,8 @@ OTC Stocks：$0.00000003/Share    FINRA
 
 <div class="input-group">
     <label>Bid Size</label>
-    <input type="number" id="bidsize" step="0.01">
+    <input type="number" id="bidsize" step="0.01"
+           onkeydown="if(event.key === 'Enter'){ calculate(); }">
 </div>
 
 <button onclick="calculate()">Calculate</button>
