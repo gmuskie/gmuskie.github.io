@@ -6,6 +6,7 @@
 <title>US Stock Trading Amount Calculator</title>
 
 
+
 <!--
 ref: https://www.futuhk.com/en/commissionnew
 
@@ -30,6 +31,7 @@ Consolidated Audit Trail Fees
 NMS Stocks：$0.000003/Share
 OTC Stocks：$0.00000003/Share    FINRA
 -->
+
 
 
 <style>
@@ -111,9 +113,8 @@ OTC Stocks：$0.00000003/Share    FINRA
         background-color: #fff7e6;
     }
 
-    /* Target table cells on hover to override .buy / .sell classes */
     tbody tr:hover td {
-        background-color: #e2e2e2 !important; 
+        background-color: #e2e2e2 !important;
         cursor: pointer;
     }
 </style>
@@ -130,12 +131,13 @@ OTC Stocks：$0.00000003/Share    FINRA
 
 <div class="input-group">
     <label>Quantity</label>
-    <input type="number" id="qty">
+    <input type="number" id="qty"
+           onkeydown="if(event.key === 'Enter'){ calculate(); }">
 </div>
 
 <div class="input-group">
     <label>Bid Size</label>
-    <input type="number" id="bidsize" step="0.01"
+    <input type="number" id="bidsize" step="0.01" value="0.1"
            onkeydown="if(event.key === 'Enter'){ calculate(); }">
 </div>
 
@@ -241,6 +243,11 @@ function calculate() {
         tbody.appendChild(tr);
     }
 }
+
+// Focus Price input on page load
+window.addEventListener("load", () => {
+    document.getElementById("price").focus();
+});
 </script>
 
 </body>
