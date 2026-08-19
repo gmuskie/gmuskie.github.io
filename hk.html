@@ -1,0 +1,439 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HKEX Trading Amount Calculator</title>
+<style>
+    :root {
+        --bg: #05070b;
+        --panel: #101826;
+        --panel-strong: #121a2b;
+        --border: #2b3a4d;
+        --text: #f3f4f6;
+        --muted: #d1d5db;
+        --header: #1f2937;
+        --input: #0b1220;
+        --buy: rgba(39, 125, 161, 0.35);
+        --sell: rgba(185, 120, 12, 0.35);
+        --hover: rgba(148, 163, 184, 0.2);
+    }
+
+    body {
+        font-family: Arial, sans-serif;
+        margin: 15px;
+        font-size: 14px;
+        background-color: var(--bg);
+        color: var(--text);
+    }
+
+    h2 {
+        text-align: center;
+        color: var(--text);
+    }
+
+    .input-group {
+        margin-bottom: 12px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: var(--muted);
+    }
+
+    input {
+        width: 20ch;
+        max-width: 100%;
+        padding: 6px;
+        font-size: 15px;
+        box-sizing: border-box;
+        background-color: var(--input);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+    }
+
+    button {
+        display: block;
+        margin-top: 10px;
+        padding: 8px 14px;
+        font-size: 15px;
+        cursor: pointer;
+        background: #111827;
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+    }
+
+    .table-wrapper, .bottom-section {
+        margin-top: 20px;
+        max-height: 60vh;
+        overflow-y: auto;
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        background-color: var(--panel);
+        color: var(--text);
+    }
+
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 1200px;
+        font-size: 13px;
+        background-color: var(--panel-strong);
+        color: var(--text);
+    }
+
+    th, td {
+        border: 1px solid var(--border);
+        padding: 6px;
+        text-align: right;
+        white-space: nowrap;
+        color: var(--text);
+    }
+
+    th {
+        background-color: var(--header);
+        text-align: center;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    td:first-child, th:first-child {
+        text-align: center;
+    }
+
+    .buy {
+        background-color: var(--buy);
+    }
+
+    .sell {
+        background-color: var(--sell);
+    }
+
+    tbody tr:hover td {
+        background-color: var(--hover) !important;
+        cursor: pointer;
+    }
+
+    th:first-child {
+      position: sticky;
+      left: 5;
+      background-color: var(--header);
+      font-weight: bold;
+      z-index: 0;
+    }
+</style>
+</head>
+<body>
+
+<h2>HKEX Trading Amount Calculator</h2>
+
+<div class="input-group">
+    <label>Price</label>
+    <input type="number" id="price" step="any" onclick="clearField(this)">
+</div>
+
+<div class="input-group">
+    <label>Quantity</label>
+    <input type="number" id="qty" onclick="clearField(this)" onkeydown="if (event.key === 'Enter') { event.preventDefault(); main(event); }">
+</div>
+
+<button onclick="main(event)">Calculate</button>
+
+<div class="table-wrapper" aria-hidden="true"></div>
+
+<script>
+
+    var price, qty, bidSize, consideration, buyTotalAmount, sellTotalAmount, el_containerDiv;
+
+    function roundTo2(num) {
+      return Math.round((num + Number.EPSILON) * 100) / 100;
+    }
+
+    function setTable() {
+      // Clear the previous table, if it exists
+      var previousTable = document.getElementById("mainTable");
+      if (previousTable) {
+        previousTable.remove();
+      }
+
+      var previousBottomSection = document.getElementById("bottom-section");
+      if (previousBottomSection) {
+        previousBottomSection.remove();
+      }
+
+      var el_bottomDiv = document.createElement("div");
+      el_bottomDiv.id = "bottom-section";
+      el_bottomDiv.classList.add("bottom-section");
+
+      var tHeader = ["","Price", "Qty", "G/L HKD", "BidSize", "Consideration", "Platform", "Settlement", 	
+                     "AdValStamp"," Trading", "XactLevy", "FRCLevy", "OtherTotal", "TotalAmount", "GainLoss(%)"]; 
+
+      var sellId = ["s_title","s_Price","s_Qty", "s_GL_HKD", "s_BidSize", "s_Consideration", "s_Platform", "s_Settlement", 	
+                    "AdValStamp", "s_Trading", "s_XactLevy", "s_FRCLevy", "s_OtherTotal", "s_TotalAmount", "s_GainLoss"];
+
+      var el_table = document.createElement("table");
+      el_table.id = "mainTable";      
+      el_table.classList.add("mainTable");
+    
+      var thead = document.createElement("thead");
+      var tr = document.createElement("tr");      
+
+      var consideration = price * qty;
+      var otherFee = getOtherFee(consideration)
+      
+      buyTotalAmount = consideration + otherFee.total;
+      var tBody = [["Buy", 
+                    fmtDecimal(price),
+                    fmtNoDecimal(qty),
+                    fmtDecimal(0),
+                    fmtDecimal(bidSize),
+                    fmtDecimal(consideration),
+                    fmtDecimal(otherFee.platform), 
+                    fmtDecimal(otherFee.settlement), 
+                    fmtDecimal(otherFee.adValStamp),                     
+                    fmtDecimal(otherFee.trading), 
+                    fmtDecimal(otherFee.xactLevy), 
+                    fmtDecimal(otherFee.frcLevy),                     
+                    fmtDecimal(otherFee.total),
+                    fmtDecimal(buyTotalAmount),
+                    "0"],
+                   ];      
+                   
+      var maxRow = 500;
+      var curBuyPrice = price;
+      var curSellPrice = price + bidSize;
+        
+      // Create table heading cells
+      for (var i = 0; i < tHeader.length; i++) {
+        var th = document.createElement("th");
+        th.textContent = tHeader[i];    // equal to td
+        tr.appendChild(th);
+      }
+      thead.appendChild(tr);
+      el_table.appendChild(thead);
+
+      // table body - buy
+      for (var i = 0; i < tBody.length; i++) {
+        var row = document.createElement("tr");
+        for (var j = 0; j < tBody[i].length; j++) {
+          var el_td = document.createElement("td");
+          if (i == 1) {
+            el_td.setAttribute('id', sellId[j] );
+          }
+
+          el_td.textContent = tBody[i][j];
+          el_td.style.textAlign = "right";
+          row.appendChild(el_td);
+        }
+        el_table.appendChild(row);
+      }
+      
+      // table body => sell
+      for (var i = 0; i <= maxRow; i++) {
+        consideration = curSellPrice * qty;
+        otherFee = getOtherFee(consideration)
+        sellTotalAmount = consideration - otherFee.total;
+        gl = sellTotalAmount - buyTotalAmount;
+        glPcent = (curSellPrice - price) / price * 100;
+        
+        var tSellBody = ["Sell", 
+                    fmtDecimal(curSellPrice),
+                    fmtNoDecimal(qty),
+                    fmtDecimal(gl),
+                    fmtDecimal(bidSize),
+                    fmtDecimal(consideration),
+                    fmtDecimal(otherFee.platform), 
+                    fmtDecimal(otherFee.settlement), 
+                    fmtDecimal(otherFee.adValStamp),                     
+                    fmtDecimal(otherFee.trading), 
+                    fmtDecimal(otherFee.xactLevy), 
+                    fmtDecimal(otherFee.frcLevy), 
+                    fmtDecimal(otherFee.total),
+                    fmtDecimal(sellTotalAmount),
+                    fmtDecimal(gl) + " (" + fmtDecimal(glPcent) + ")",                    
+                   ];      
+
+
+        var row = document.createElement("tr");
+        for (var j = 0; j < tSellBody.length; j++) {        
+        
+          var el_td = document.createElement("td");
+          var buyingCost = getCost(curBuyPrice, qty, "buy")
+          var buyingCost = getCost(curSellPrice, qty, "sell");
+         
+          el_td.setAttribute('id', sellId[j] );
+
+          //el_td.textContent = tSellBody[i][j];
+          el_td.textContent = tSellBody[j];
+          el_td.style.textAlign = "right";
+          row.appendChild(el_td);
+        }
+        el_table.appendChild(row);
+        curSellPrice += bidSize; 
+      }
+
+      // Append the table to the document body
+      el_bottomDiv.appendChild(el_table);
+      document.body.appendChild(el_bottomDiv);      
+    }
+
+
+    function main(e) {
+      if (e && e.preventDefault) e.preventDefault();
+
+      price = document.getElementById("price").value;
+      price = parseFloat(price);
+      qty = document.getElementById("qty").value;
+      qty = parseFloat(qty);      
+      bidSize = getBidSize(price);
+      bidSize = parseFloat(bidSize);      
+      consideration = price * qty;
+      
+      setTable(); 
+
+    }
+
+
+
+    function fmtDecimal(num) {
+      // Multiply by 1000 to shift the decimal point
+      //const shifted = Math.round(num * 1000);
+      const shifted = num * 1000;
+      
+      // Extract the first two decimal places
+      const wholePart = Math.floor(shifted / 10); // Get the whole number part
+
+      const decimalPart = shifted % 10; // Get the third decimal place
+
+      // If the third decimal place is greater than 1, add it to the second decimal place
+      if (decimalPart > 1) {
+          newNum = (wholePart + 1) / 100; // Add 1 to the second decimal place
+      } else {
+        newNum = wholePart / 100; // Just return the number with two decimal places
+      }
+
+      return newNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      
+    }
+
+    function fmtNoDecimal(n) {
+      return n.toLocaleString();
+    }
+
+    function getBidSize(price) {
+    // https://www.hkex.com.hk/-/media/HKEX-Market/Services/Rules-and-Forms-and-Fees/Rules/SEHK/Securities/Rules/Sch_02.pdf
+
+        var bidSize = 0;
+        if (price <= 0.25) {
+          bidSize = 0.001;
+        } else if (price <= 0.5) {
+          bidSize = 0.005;
+        } else if (price <= 10) {
+          bidSize = 0.01;
+        } else if (price <= 20) {
+          bidSize = 0.02;
+        } else if (price <= 100) {
+          bidSize = 0.05;
+        } else if (price <= 200) {
+          bidSize = 0.1;
+        } else if (price <= 500) {
+          bidSize = 0.2;
+        } else if (price <= 1000) {
+          bidSize = 0.5;
+        } else if (price <= 2000) {
+          bidSize = 1;
+        } else if (price <= 5000) {
+          bidSize = 2;
+        } else if (price <= 9995) {
+          bidSize = 5;
+        }
+        
+        return bidSize;
+    }
+
+
+    function getCost(price, qty, bs) {
+      var consideration = price * qty;
+      var otherFee = getOtherFee(consideration);
+      if (bs == "buy"){                
+        var total = consideration + otherFee.total;
+      } else {
+        var total = consideration - otherFee.total;
+      }
+
+      return total;
+    }
+
+
+    function getOtherFee(consideration) {
+        // Rate
+        // var settlement_rate = 0.00002;   // 交收費 HKEX
+        var settlement_rate = 0.000042;   // 交收費 HKEX
+        var ad_val_stamp_rate = 0.001;   // 印花稅 HK Government        
+        var trading_rate = 0.0000565;    // 交易費 HKEX
+        var xact_levy_rate = 0.000027;   // 證監會徵費 SFC
+        var frc_levy_rate = 0.0000015;   // 財匯局徵費  SFC   
+        var otherFee = {};
+        
+        // Fee        
+        otherFee.platform = 15; // 平台使用費
+                
+        otherFee.adValStamp = ad_val_stamp_rate * consideration;  // 印花稅 | 每宗交易額之 0.1%" | 不足一元 亦作一元計算   
+        if (otherFee.adValStamp < 1) {
+            otherFee.adValStamp = 1;
+        }
+        otherFee.adValStamp = Math.ceil(otherFee.adValStamp);
+
+        otherFee.settlement = settlement_rate * consideration;  // 交收費 
+        otherFee.settlement = roundTo2(otherFee.settlement);
+               
+        otherFee.trading = trading_rate * consideration; // 交易費      
+        otherFee.trading = roundTo2(otherFee.trading);
+        
+        otherFee.xactLevy = xact_levy_rate * consideration;  // 證監會徵費 
+        otherFee.xactLevy = roundTo2(otherFee.xactLevy);
+        
+        otherFee.frcLevy = frc_levy_rate * consideration;   // 財匯局徵費 
+        otherFee.frcLevy = roundTo2(otherFee.frcLevy);
+        
+        otherFee.total = otherFee.platform + otherFee.adValStamp + otherFee.settlement + otherFee.trading  + otherFee.xactLevy + otherFee.frcLevy;       
+
+        return otherFee;
+    }    
+    
+
+    function setCursorFocus() {
+      var inputField = document.getElementById("price");
+      if (inputField) inputField.focus();
+    }
+
+
+    function handleKeyPress(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        main(event);
+      }
+    }
+
+    function clearField(inputField) {
+      inputField.value = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      var qtyField = document.getElementById('qty');
+      if (qtyField) {
+        qtyField.addEventListener('keydown', handleKeyPress);
+      }
+      setCursorFocus();
+    });
+
+</script>
+
+</body>
+</html>
