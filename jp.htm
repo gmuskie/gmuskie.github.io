@@ -1,4 +1,276 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JP Trading Amount Calculator</title>
+<style>
+    :root {
+        --bg: #05070b;
+        --panel: #101826;
+        --panel-strong: #121a2b;
+        --border: #2b3a4d;
+        --text: #f3f4f6;
+        --muted: #d1d5db;
+        --header: #1f2937;
+        --input: #0b1220;
+        --buy: rgba(39, 125, 161, 0.35);
+        --sell: rgba(185, 120, 12, 0.35);
+        --hover: rgba(148, 163, 184, 0.2);
+    }
+
+    body {
+        font-family: Arial, sans-serif;
+        margin: 15px;
+        font-size: 14px;
+        background-color: var(--bg);
+        color: var(--text);
+    }
+
+    h2 {
+        text-align: center;
+        color: var(--text);
+    }
+
+    .input-group {
+        margin-bottom: 12px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: var(--muted);
+    }
+
+    input {
+        width: 20ch;
+        max-width: 100%;
+        padding: 6px;
+        font-size: 15px;
+        box-sizing: border-box;
+        background-color: var(--input);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+    }
+
+    button {
+        display: block;
+        margin-top: 10px;
+        padding: 8px 14px;
+        font-size: 15px;
+        cursor: pointer;
+        background: #111827;
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+    }
+
+    .table-wrapper, .bottom-section {
+        margin-top: 20px;
+        max-height: 60vh;
+        overflow-y: auto;
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        background-color: var(--panel);
+        color: var(--text);
+    }
+
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 1200px;
+        font-size: 13px;
+        background-color: var(--panel-strong);
+        color: var(--text);
+    }
+
+    th, td {
+        border: 1px solid var(--border);
+        padding: 6px;
+        text-align: right;
+        white-space: nowrap;
+        color: var(--text);
+    }
+
+    th {
+        background-color: var(--header);
+        text-align: center;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    td:first-child, th:first-child {
+        text-align: center;
+    }
+
+    .buy { background-color: var(--buy); }
+    .sell { background-color: var(--sell); }
+    tbody tr:hover td { background-color: var(--hover) !important; cursor: pointer; }
+    th:first-child { position: sticky; left: 5; background-color: var(--header); font-weight: bold; z-index: 0; }
+</style>
+</head>
+<body>
+
+<h2>JP</h2>
+
+<div class="input-group">
+    <label>Price</label>
+    <input type="number" id="price" step="any" onclick="clearField(this)">
+</div>
+
+<div class="input-group">
+    <label>Quantity</label>
+    <input type="number" id="qty" onclick="clearField(this)" onkeydown="if (event.key === 'Enter') { event.preventDefault(); main(event); }">
+</div>
+
+<div class="input-group">
+    <label>BidSize (override)</label>
+    <input type="number" id="bidsize" step="any" value="1" onclick="clearField(this)">
+</div>
+
+<div class="input-group">
+    <label>xRate (JPY => HKD)</label>
+    <input type="number" id="xRate" disabled>
+</div>
+
+<button onclick="main(event)">Calculate</button>
+
+<div class="table-wrapper" aria-hidden="true"></div>
+
+<script>
+    // JP-specific variables and formula functions preserved
+    var price, qty, bidSize, consideration, buyTotalAmount, sellTotalAmount, el_containerDiv, xRate;
+    const apiUrl = `https://open.er-api.com/v6/latest/JPY`;
+
+    async function fetchExchangeRate() {
+      try {
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+        xRate = data && data.rates && data.rates.HKD ? data.rates.HKD : 0.055;
+      } catch (err) {
+        xRate = 0.055; // fallback
+      }
+      var xRateInput = document.getElementById('xRate');
+      if (xRateInput) xRateInput.value = xRate;
+    }
+
+    function setTable() {
+      var previousTable = document.getElementById("mainTable"); if (previousTable) previousTable.remove();
+      var previousBottomSection = document.getElementById("bottom-section"); if (previousBottomSection) previousBottomSection.remove();
+      var el_bottomDiv = document.createElement("div"); el_bottomDiv.id = "bottom-section"; el_bottomDiv.classList.add("bottom-section");
+
+      var tHeader = ["","Price", "Qty", "G/L HKD", "BidSize", "Consideration","Commission", "Platform",
+              "Settlement", "SEC", "Trading", "OtherTotal", "TotalJPY=>HKD", "GainLoss(%)"]; 
+
+      var sellId = ["s_title","s_Price", "s_Qty", "s_GL_HKD", "s_BidSize", "s_Consideration", "s_Platform","s_Commission",
+                    "s_Settlement","s_SEC","s_Trading", "s_OtherTotal", "s_TotalAmount", "s_GainLoss"];
+
+      var el_table = document.createElement("table"); el_table.id = "mainTable"; el_table.classList.add("mainTable");
+      var thead = document.createElement("thead"); var tr = document.createElement("tr");
+
+      var consideration = price * qty;
+      var otherFee = getOtherFee(price, qty, "buy")
+      buyTotalAmount = consideration + otherFee.total;
+      buyTotalAmountHKD = (consideration + otherFee.total) * xRate;
+
+      var tBody = [["Buy", fmtDecimal(price), fmtNoDecimal(qty), fmtDecimal(0), fmtNoDecimal(bidSize), fmtNoDecimal(consideration),
+                    fmtNoDecimal(otherFee.commission), fmtNoDecimal(otherFee.platform), fmtNoDecimal(otherFee.settlement), fmtNoDecimal(0),
+                    fmtNoDecimal(0), fmtNoDecimal(otherFee.total), fmtNoDecimal(buyTotalAmount) + " => " + fmtNoDecimal(buyTotalAmountHKD), "0"]];
+
+      var maxRow = 500;
+      var curBuyPrice = price;
+      var curSellPrice = price + bidSize;
+
+      for (var i = 0; i < tHeader.length; i++) { var th = document.createElement("th"); th.textContent = tHeader[i]; tr.appendChild(th); }
+      thead.appendChild(tr); el_table.appendChild(thead);
+
+      for (var i = 0; i < tBody.length; i++) {
+        var row = document.createElement("tr");
+        for (var j = 0; j < tBody[i].length; j++) {
+          var el_td = document.createElement("td"); if (i == 1) el_td.setAttribute('id', sellId[j]);
+          el_td.textContent = tBody[i][j]; el_td.style.textAlign = "right"; row.appendChild(el_td);
+        }
+        el_table.appendChild(row);
+      }
+
+      JPYtoHKD = xRate;
+      for (var i = 0; i <= maxRow; i++) {
+        consideration = curSellPrice * qty;
+        otherFee = getOtherFee(curSellPrice, qty, "sell");
+        sellTotalAmount = consideration - otherFee.total;
+        sellTotalAmountHKD = (consideration - otherFee.total) * xRate;
+        gl = sellTotalAmount - buyTotalAmount;
+        glPcent = (curSellPrice - price) / price * 100;
+        var tSellBody = ["Sell", fmtDecimal(curSellPrice), fmtNoDecimal(qty), fmtDecimal(gl * JPYtoHKD), fmtNoDecimal(bidSize), fmtNoDecimal(consideration),
+                          fmtNoDecimal(otherFee.commission), fmtNoDecimal(otherFee.platform), fmtNoDecimal(otherFee.settlement), fmtDecimal(0), fmtDecimal(0),
+                          fmtNoDecimal(otherFee.total), fmtNoDecimal(sellTotalAmount) + " => " + fmtNoDecimal(sellTotalAmountHKD), fmtNoDecimal(gl) + " (" + fmtDecimal(glPcent) + ")"];
+
+        var row = document.createElement("tr");
+        for (var j = 0; j < tSellBody.length; j++) {
+          var el_td = document.createElement("td"); if (i == 1) el_td.setAttribute('id', sellId[j]); el_td.textContent = tSellBody[j]; el_td.style.textAlign = "right"; row.appendChild(el_td);
+        }
+        el_table.appendChild(row);
+        curSellPrice += bidSize;
+      }
+
+      el_bottomDiv.appendChild(el_table);
+      document.body.appendChild(el_bottomDiv);
+    }
+
+    function main(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      var xr = document.getElementById("xRate"); if (xr) xr.value = xRate;
+      price = parseFloat(document.getElementById("price").value);
+      qty = parseFloat(document.getElementById("qty").value);
+      bidSize = parseFloat(document.getElementById("bidsize").value);
+      consideration = price * qty;
+      setTable();
+    }
+
+    // JP formula functions unchanged
+    function fmtDecimal(n) { return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function fmtNoDecimal(n) { return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+    function getBidSize(price) {
+      var bidSize = 0;
+      if (price <= 3000) { bidSize = 1; }
+      else if (price <= 5000) { bidSize = 5; }
+      else if (price <= 30000) { bidSize = 10; }
+      else if (price <= 50000) { bidSize = 50; }
+      else if (price <= 300000) { bidSize = 100; }
+      else if (price <= 500000) { bidSize = 500; }
+      else if (price <= 3000000) { bidSize = 1000; }
+      else if (price <= 5000000) { bidSize = 5000; }
+      else if (price <= 30000000) { bidSize = 10000; }
+      else if (price <= 50000000) { bidSize = 50000; }
+      else if (price > 50000000) { bidSize = 100000; }
+      return bidSize;
+    }
+    function getCost(price, qty, bs) { var consideration = price * qty; var otherFee = getOtherFee(price, qty, bs); return (bs == "buy") ? (consideration + otherFee.total) : (consideration - otherFee.total); }
+    function ceilToDecimalPlaces(num, decimalPlaces) { const factor = Math.pow(10, decimalPlaces); return Math.ceil(num * factor) / factor; }
+    function getOtherFee(price, qty, bs) {
+      var commission_rate = 0.0008; var fixed_platform = 180; var settlement = 40; var otherFee = {};
+      otherFee.platform = fixed_platform; otherFee.settlement = settlement;
+      otherFee.commission = ceilToDecimalPlaces(commission_rate * (qty * price), 0);
+      if (otherFee.commission < 80) otherFee.commission = 80;
+      otherFee.total = otherFee.commission + otherFee.platform + otherFee.settlement; return otherFee;
+    }
+
+    function setCursorFocus() { var inputField = document.getElementById("price"); if (inputField) inputField.focus(); }
+    function handleKeyPress(event) { if (event.key === 'Enter') { event.preventDefault(); main(event); } }
+    function clearField(inputField) { inputField.value = ''; }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      var qtyField = document.getElementById('qty'); if (qtyField) qtyField.addEventListener('keydown', handleKeyPress);
+      fetchExchangeRate(); setCursorFocus();
+    });
+</script>
+
+</body>
+</html>
+<!DOCTYPE html>
 <html>
 <head>
   <script>
@@ -21,461 +293,428 @@
       const data = await response.json();
 
       // Assign the JPY to HKD rate to the variable xrate
-      xRate = data.rates.HKD;
-    }
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>JP Trading Amount Calculator</title>
+      <style>
+          :root {
+              --bg: #05070b;
+              --panel: #101826;
+              --panel-strong: #121a2b;
+              --border: #2b3a4d;
+              --text: #f3f4f6;
+              --muted: #d1d5db;
+              --header: #1f2937;
+              --input: #0b1220;
+              --buy: rgba(39, 125, 161, 0.35);
+              --sell: rgba(185, 120, 12, 0.35);
+              --hover: rgba(148, 163, 184, 0.2);
+          }
 
+          body {
+              font-family: Arial, sans-serif;
+              margin: 15px;
+              font-size: 14px;
+              background-color: var(--bg);
+              color: var(--text);
+          }
 
-    function init() {
-      fetchExchangeRate();           
-      setupForm();
-    }
+          h2 {
+              text-align: center;
+              color: var(--text);
+          }
 
+          .input-group {
+              margin-bottom: 12px;
+          }
 
-    function setupForm() {
-      const form = document.createElement('form');
+          label {
+              display: block;
+              margin-bottom: 5px;
+              font-weight: bold;
+              color: var(--muted);
+          }
 
-      form.onsubmit = main; // Call main() on form submission
+          input {
+              width: 20ch;
+              max-width: 100%;
+              padding: 6px;
+              font-size: 15px;
+              box-sizing: border-box;
+              background-color: var(--input);
+              color: var(--text);
+              border: 1px solid var(--border);
+              border-radius: 4px;
+          }
 
-      const priceLabel = document.createElement('label');
-      priceLabel.textContent = 'Price: ';
-      const priceInput = document.createElement('input');
-      priceInput.setAttribute('id', 'price');
-      priceInput.setAttribute('type', 'number');
-      priceInput.setAttribute('name', 'price');
-      priceInput.setAttribute('step', 'any');
-      priceInput.setAttribute('onclick', "clearField(this)");
-      priceInput.setAttribute('required', "");
-      priceLabel.appendChild(priceInput);
+          button {
+              display: block;
+              margin-top: 10px;
+              padding: 8px 14px;
+              font-size: 15px;
+              cursor: pointer;
+              background: #111827;
+              color: var(--text);
+              border: 1px solid var(--border);
+              border-radius: 4px;
+          }
 
-      const qtyLabel = document.createElement('label');
-      qtyLabel.textContent = 'Qty: ';
-      const qtyInput = document.createElement('input');
-      qtyInput.setAttribute('id', 'qty');
-      qtyInput.setAttribute('type', 'number');
-      qtyInput.setAttribute('name', 'qty');
-      qtyInput.setAttribute('onclick', "clearField(this)");
-      qtyInput.setAttribute('required', "");
-      qtyLabel.appendChild(qtyInput);
+          .table-wrapper, .bottom-section {
+              margin-top: 20px;
+              max-height: 60vh;
+              overflow-y: auto;
+              overflow-x: auto;
+              border: 1px solid var(--border);
+              background-color: var(--panel);
+              color: var(--text);
+          }
 
-      const bidsizeLabel = document.createElement('label');
-      bidsizeLabel.textContent = 'BidSize: ';
-      const bidsizeInput = document.createElement('input');
-      bidsizeInput.setAttribute('id', 'bidsize');
-      bidsizeInput.setAttribute('type', 'number');
-      bidsizeInput.setAttribute('step', 'any');
-      bidsizeInput.setAttribute('name', 'bidsize');
-      bidsizeInput.setAttribute('onclick', "clearField(this)");
-      bidsizeInput.setAttribute('required', "");
-      bidsizeLabel.appendChild(bidsizeInput);
-      bidsizeInput.setAttribute("value", "1");
-      
-      const xRateLabel = document.createElement('label');
-      xRateLabel.textContent = 'xRate: ';
-      const xRateInput = document.createElement('input');
-      xRateInput.setAttribute('id', 'xRate');
-      xRateInput.setAttribute('type', 'number');
-      xRateInput.setAttribute('name', 'xRate');
-      xRateInput.setAttribute('disabled', 'true');
-      xRateLabel.appendChild(xRateInput);
-      xRateInput.setAttribute("value", xRate);
+          table {
+              border-collapse: collapse;
+              width: 100%;
+              min-width: 1200px;
+              font-size: 13px;
+              background-color: var(--panel-strong);
+              color: var(--text);
+          }
 
-      const submitButton = document.createElement('input');
-      submitButton.setAttribute('type', 'submit');
-      submitButton.setAttribute('value', 'Submit');
+          th, td {
+              border: 1px solid var(--border);
+              padding: 6px;
+              text-align: right;
+              white-space: nowrap;
+              color: var(--text);
+          }
 
+          th {
+              background-color: var(--header);
+              text-align: center;
+              position: sticky;
+              top: 0;
+              z-index: 2;
+          }
 
-      form.appendChild(priceLabel);
-      form.appendChild(document.createElement('br'));
-      form.appendChild(document.createElement('br'));
-      form.appendChild(qtyLabel);
-      form.appendChild(document.createElement('br'));
-      form.appendChild(document.createElement('br'));
-      
-      form.appendChild(bidsizeLabel);
-      form.appendChild(document.createElement('br'));
-      form.appendChild(document.createElement('br'));
-      
-      form.appendChild(xRateLabel);
-      form.appendChild(document.createElement('br'));
-      form.appendChild(document.createElement('br'));
+          td:first-child, th:first-child {
+              text-align: center;
+          }
 
-      form.appendChild(submitButton);
-      
-      form.appendChild(document.createElement('br'));
+          .buy {
+              background-color: var(--buy);
+          }
 
-      document.body.appendChild(form);
+          .sell {
+              background-color: var(--sell);
+          }
+
+          tbody tr:hover td {
+              background-color: var(--hover) !important;
+              cursor: pointer;
+          }
+
+          th:first-child {
+            position: sticky;
+            left: 5;
+            background-color: var(--header);
+            font-weight: bold;
+            z-index: 0;
+          }
+      </style>
+      </head>
+      <body>
+
+      <h2>JP</h2>
+
+      <div class="input-group">
+          <label>Price</label>
+          <input type="number" id="price" step="any" onclick="clearField(this)">
+      </div>
+
+      <div class="input-group">
+          <label>Quantity</label>
+          <input type="number" id="qty" onclick="clearField(this)" onkeydown="if (event.key === 'Enter') { event.preventDefault(); main(event); }">
+      </div>
+
+      <div class="input-group">
+          <label>BidSize (override)</label>
+          <input type="number" id="bidsize" step="any" value="1" onclick="clearField(this)">
+      </div>
+
+      <div class="input-group">
+          <label>xRate (JPY => HKD)</label>
+          <input type="number" id="xRate" disabled>
+      </div>
+
+      <button onclick="main(event)">Calculate</button>
+
+      <div class="table-wrapper" aria-hidden="true"></div>
+
+      <script>
+
+          // JP-specific variables and formula functions preserved as-is
+          var price, qty, bidSize, consideration, buyTotalAmount, sellTotalAmount, el_containerDiv, xRate;
+
+          const apiUrl = `https://open.er-api.com/v6/latest/JPY`;
+
+          async function fetchExchangeRate() {
+            try {
+              const response = await fetch(apiUrl);
+              const data = await response.json();
+              xRate = data.rates.HKD;
+            } catch (err) {
+              xRate = 0.055; // fallback
+            }
+            var xRateInput = document.getElementById('xRate');
+            if (xRateInput) xRateInput.value = xRate;
+          }
+
+          function init() {
+            fetchExchangeRate();
+            setCursorFocus();
+          }
+
+          function setTable() {
+            // Reuse the JP table generation logic (unchanged formulas)
+            var previousTable = document.getElementById("mainTable");
+            if (previousTable) previousTable.remove();
+
+            var previousBottomSection = document.getElementById("bottom-section");
+            if (previousBottomSection) previousBottomSection.remove();
+
+            var el_bottomDiv = document.createElement("div");
+            el_bottomDiv.id = "bottom-section";
+            el_bottomDiv.classList.add("bottom-section");
+
+            var tHeader = ["","Price", "Qty", "G/L HKD", "BidSize", "Consideration","Commission", "Platform",
+                    "Settlement", "SEC", "Trading", "OtherTotal", "TotalJPY=>HKD", "GainLoss(%)"]; 
+
+            var sellId = ["s_title","s_Price", "s_Qty", "s_GL_HKD", "s_BidSize", "s_Consideration", "s_Platform","s_Commission",
+                          "s_Settlement","s_SEC","s_Trading", "s_OtherTotal", "s_TotalAmount", "s_GainLoss"];
+
+            var el_table = document.createElement("table");
+            el_table.id = "mainTable";      
+            el_table.classList.add("mainTable");
     
-      priceInput.focus();
+            var thead = document.createElement("thead");
+            var tr = document.createElement("tr");      
 
-    }
-  
-        
-    function setTable() {
-      // Clear the previous table, if it exists
-      var previousTable = document.getElementById("mainTable");
-      if (previousTable) {
-        previousTable.remove();
-      }
-
-      var previousBottomSection = document.getElementById("bottom-section");
-      if (previousBottomSection) {
-        previousBottomSection.remove();
-      }
-
-      var el_bottomDiv = document.createElement("div");
-      el_bottomDiv.id = "bottom-section";
-      el_bottomDiv.classList.add("bottom-section");
-
-      var tHeader = ["","Price", "Qty", "G/L HKD", "BidSize", "Consideration","Commission", "Platform",
-              "Settlement",	"SEC",	"Trading", " OtherTotal", "TotalJPY=>HKD", "GainLoss(%)"]; 
-
-      var sellId = ["s_title","s_Price", , "s_GL_HKD", "s_Qty", "s_BidSize", "s_Consideration", "s_Platform","s_Commission",	
-                    "s_Settlement",	"s_SEC",	"s_Trading", "s_OtherTotal", "s_TotalAmount", "s_GainLoss"];
-
-      var el_table = document.createElement("table");
-      el_table.id = "mainTable";      
-      el_table.classList.add("mainTable");
-    
-      var thead = document.createElement("thead");
-      var tr = document.createElement("tr");      
-
-      var consideration = price * qty;
-      var otherFee = getOtherFee(price, qty, "buy")
+            var consideration = price * qty;
+            var otherFee = getOtherFee(price, qty, "buy")
       
-      buyTotalAmount = consideration + otherFee.total;
-      buyTotalAmountHKD = (consideration + otherFee.total) * xRate;
+            buyTotalAmount = consideration + otherFee.total;
+            buyTotalAmountHKD = (consideration + otherFee.total) * xRate;
 
-      var tBody = [["Buy", 
-                    fmtDecimal(price),
-                    fmtNoDecimal(qty),
-                    fmtDecimal(0),
-                    fmtNoDecimal(bidSize),
-                    fmtNoDecimal(consideration),
-                    fmtNoDecimal(otherFee.commission), 
-                    fmtNoDecimal(otherFee.platform), 
-                    fmtNoDecimal(otherFee.settlement),                     
-                    fmtNoDecimal(0),  //otherFee.sec
-                    fmtNoDecimal(0),  //otherFee.trading
-                    fmtNoDecimal(otherFee.total),
-                    fmtNoDecimal(buyTotalAmount) + " => " + fmtNoDecimal(buyTotalAmountHKD),
-                    "0", ],
-                   ];      
+            var tBody = [["Buy", 
+                          fmtDecimal(price),
+                          fmtNoDecimal(qty),
+                          fmtDecimal(0),
+                          fmtNoDecimal(bidSize),
+                          fmtNoDecimal(consideration),
+                          fmtNoDecimal(otherFee.commission), 
+                          fmtNoDecimal(otherFee.platform), 
+                          fmtNoDecimal(otherFee.settlement),                     
+                          fmtNoDecimal(0),
+                          fmtNoDecimal(0),
+                          fmtNoDecimal(otherFee.total),
+                          fmtNoDecimal(buyTotalAmount) + " => " + fmtNoDecimal(buyTotalAmountHKD),
+                          "0", ],
+                         ];      
                    
-      var maxRow = 500;
-      var curBuyPrice = price;
-      var curSellPrice = price + bidSize;
+            var maxRow = 500;
+            var curBuyPrice = price;
+            var curSellPrice = price + bidSize;
         
-      // Create table heading cells
-      for (var i = 0; i < tHeader.length; i++) {
-        var th = document.createElement("th");
-        th.textContent = tHeader[i];    // equal to td
-        tr.appendChild(th);
-      }
-      thead.appendChild(tr);
-      el_table.appendChild(thead);
+            // Create table heading cells
+            for (var i = 0; i < tHeader.length; i++) {
+              var th = document.createElement("th");
+              th.textContent = tHeader[i];
+              tr.appendChild(th);
+            }
+            thead.appendChild(tr);
+            el_table.appendChild(thead);
 
-      // table body - buy
-      for (var i = 0; i < tBody.length; i++) {
-        var row = document.createElement("tr");
-        for (var j = 0; j < tBody[i].length; j++) {
-          var el_td = document.createElement("td");
-          if (i == 1) {
-            el_td.setAttribute('id', sellId[j] );
+            // table body - buy
+            for (var i = 0; i < tBody.length; i++) {
+              var row = document.createElement("tr");
+              for (var j = 0; j < tBody[i].length; j++) {
+                var el_td = document.createElement("td");
+                if (i == 1) {
+                  el_td.setAttribute('id', sellId[j] );
+                }
+
+                el_td.textContent = tBody[i][j];
+                el_td.style.textAlign = "right";
+                row.appendChild(el_td);
+              }
+              el_table.appendChild(row);
+            }
+      
+            // table body => sell
+            JPYtoHKD = xRate;
+
+            for (var i = 0; i <= maxRow; i++) {
+              consideration = curSellPrice * qty;
+              otherFee = getOtherFee(curSellPrice, qty, "sell");
+              sellTotalAmount = consideration - otherFee.total;
+              sellTotalAmountHKD = (consideration - otherFee.total) * xRate;
+              gl = sellTotalAmount - buyTotalAmount;
+              glPcent = (curSellPrice - price) / price * 100;
+              var tSellBody = ["Sell", 
+                          fmtDecimal(curSellPrice),
+                          fmtNoDecimal(qty),
+                          fmtDecimal(gl * JPYtoHKD),
+                          fmtNoDecimal(bidSize),
+                          fmtNoDecimal(consideration),
+                          fmtNoDecimal(otherFee.commission), 
+                          fmtNoDecimal(otherFee.platform), 
+                          fmtNoDecimal(otherFee.settlement), 
+                          fmtDecimal(0),  
+                          fmtDecimal(0), 
+                          fmtNoDecimal(otherFee.total),
+                          fmtNoDecimal(sellTotalAmount) + " => " + fmtNoDecimal(sellTotalAmountHKD) ,
+                          fmtNoDecimal(gl) + " (" + fmtDecimal(glPcent) + ")",
+                         ];
+
+              var row = document.createElement("tr");
+              for (var j = 0; j < tSellBody.length; j++) {
+                var el_td = document.createElement("td");
+
+                if (i == 1) {
+                  el_td.setAttribute('id', sellId[j] );
+                }
+
+                el_td.textContent = tSellBody[j];
+                el_td.style.textAlign = "right";
+                row.appendChild(el_td);
+              }
+              el_table.appendChild(row);
+              curSellPrice += bidSize; 
+            }
+
+            el_bottomDiv.appendChild(el_table);
+            document.body.appendChild(el_bottomDiv);      
           }
 
-          el_td.textContent = tBody[i][j];
-          el_td.style.textAlign = "right";
-          row.appendChild(el_td);
-        }
-        el_table.appendChild(row);
-      }
-      
-      // table body => sell
-      // JPYtoHKD = 0.05
-      JPYtoHKD = xRate;
-      
+          function main(e) {
+            if (e && e.preventDefault) e.preventDefault();
 
-      for (var i = 0; i <= maxRow; i++) {
-        consideration = curSellPrice * qty;
-        otherFee = getOtherFee(curSellPrice, qty, "sell");
-        sellTotalAmount = consideration - otherFee.total;
-        sellTotalAmountHKD = (consideration - otherFee.total) * xRate;
-        gl = sellTotalAmount - buyTotalAmount;
-        glPcent = (curSellPrice - price) / price * 100;
-        var tSellBody = ["Sell", 
-                    fmtDecimal(curSellPrice),
-                    fmtNoDecimal(qty),
-                    fmtDecimal(gl * JPYtoHKD),
-                    fmtNoDecimal(bidSize),
-                    fmtNoDecimal(consideration),
-                    fmtNoDecimal(otherFee.commission), 
-                     
-                    fmtNoDecimal(otherFee.platform), 
-                    fmtNoDecimal(otherFee.settlement), 
-                    fmtDecimal(0),  
-                    fmtDecimal(0), 
-                    fmtNoDecimal(otherFee.total),
-                    fmtNoDecimal(sellTotalAmount) + " => " + fmtNoDecimal(sellTotalAmountHKD) ,
-                    fmtNoDecimal(gl) + " (" + fmtDecimal(glPcent) + ")",
-                   ];
+            document.getElementById("xRate").value = xRate;
 
-                   var row = document.createElement("tr");
-        for (var j = 0; j < tSellBody.length; j++) {        
-        
-          var el_td = document.createElement("td");
-          // var buyingCost = getCost(curBuyPrice, qty, "buy")
-          // var buyingCost = getCost(curSellPrice, qty, "sell");
+            price = document.getElementById("price").value;
+            price = parseFloat(price);
+            qty = document.getElementById("qty").value;
+            qty = parseFloat(qty);
+            bidSize = document.getElementById("bidsize").value;
+            bidSize = parseFloat(bidSize);
 
-          
+            consideration = price * qty;
 
-          if (i == 1) {
-            el_td.setAttribute('id', sellId[j] );
+            setTable();
           }
 
+          // --- JP formula functions (kept exactly as in the original jp.htm) ---
+          function fmtDecimal(n) {
+            return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
 
-          //el_td.textContent = tSellBody[i][j];
-          el_td.textContent = tSellBody[j];
-          el_td.style.textAlign = "right";
-          row.appendChild(el_td);
-        }
-        el_table.appendChild(row);
-        curSellPrice += bidSize; 
-      }
+          function fmtNoDecimal(n) {      
+            return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+          }
 
-      // Append the table to the document body
-      el_bottomDiv.appendChild(el_table);
-      document.body.appendChild(el_bottomDiv);      
-    }
+          function getBidSize(price) {
+            var bidSize = 0;
+            if (price <= 3000) {
+              bidSize = 1;
+            } else if (price <= 5000) {
+              bidSize = 5;
+            } else if (price <= 30000) {
+              bidSize = 10;
+            } else if (price <= 50000) {
+              bidSize = 50;
+            } else if (price <= 300000) {
+              bidSize = 100;
+            } else if (price <= 500000) {
+              bidSize = 500;
+            } else if (price <= 3000000) {
+              bidSize = 1000;
+            } else if (price <= 5000000) {
+              bidSize = 5000;
+            } else if (price <= 30000000) {
+              bidSize = 10000;
+            } else if (price <= 50000000) {
+              bidSize = 50000;
+            } else if (price > 50000000) {
+              bidSize = 100000;
+            }
+            return bidSize;
+          }
 
-    
-    function main() {
+          function getCost(price, qty, bs) {
+            var consideration = price * qty;
+            var otherFee = getOtherFee(price, qty, bs);
+            if (bs == "buy"){                
+              var total = consideration + otherFee.total;
+            } else {
+              var total = consideration - otherFee.total;
+            }
 
-      // Prevent form submission     
-      event.preventDefault();
+            return total;
+          }
 
-      document.getElementById("xRate").value = xRate;
+          function ceilToDecimalPlaces(num, decimalPlaces) {
+              const factor = Math.pow(10, decimalPlaces);
+              return Math.ceil(num * factor) / factor;
+          }
 
-      // setupForm();
-      price = document.getElementById("price").value;
-      price = parseFloat(price);
-      qty = document.getElementById("qty").value;
-      qty = parseFloat(qty);      
-      bidSize = document.getElementById("bidsize").value;      
-      bidSize = parseFloat(bidSize);      
-      //bidSize = getBidSize(price);
-      //alert(price);
-      //alert(bidSize);
-      //document.getElementById("bidSize").value = bidSize;
-      
-      consideration = price * qty;
-      
-      setTable(); 
+          function getOtherFee(price, qty, bs) {
+              var commission_rate = 0.0008;  // 0.08%, minimum $80/order
+              var fixed_platform = 180;  // $180/order
+              var settlement = 40;      // $40/order
+              var otherFee = {};
 
-    }
+              otherFee.platform =  fixed_platform;
+              otherFee.settlement =  settlement;
 
+              // 0.08%, minimum $80/order
+              otherFee.commission = ceilToDecimalPlaces(commission_rate * (qty * price), 0);
 
-    function fmtDecimal(n) {
-      return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
+              if (otherFee.commission < 80) {
+                otherFee.commission = 80; 
+              }
 
+              otherFee.total = otherFee.commission + otherFee.platform + otherFee.settlement; 
 
-    function fmtNoDecimal(n) {      
-      return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-    }
+              return otherFee;
+          }
 
+          function setCursorFocus() {
+            var inputField = document.getElementById("price");
+            if (inputField) inputField.focus();
+          }
 
-    function getBidSize(price) {
-      // https://www.jpx.co.jp/english/equities/trading/domestic/07.html
+          function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              main(event);
+            }
+          }
 
+          function clearField(inputField) {     
+            inputField.value = '';
+          }
 
-      // from "TOPIX500 Constituents"
-      /*
-      var bidSize = 0;
-      if (price <= 1000) {
-        bidSize = 0.1;
-      } else if (price <= 3000) {
-        bidSize = 0.5;
-      } else if (price <= 10000) {
-        bidSize = 1;      
-      } else if (price <= 30000) {
-        bidSize = 5;
-      } else if (price <= 100000) {
-        bidSize = 10;      
-      } else if (price <= 300000) {
-        bidSize = 50;
-      } else if (price <= 1000000) {
-        bidSize = 100;      
-      } else if (price <= 3000000) {
-        bidSize = 500;
-      } else if (price <= 10000000) {
-        bidSize = 1000;      
-      } else if (price <= 30000000) {
-        bidSize = 5000;
-      } else if (price > 30000000) {
-        bidSize = 10000;
-      }
-      */
+          document.addEventListener('DOMContentLoaded', function() {
+            var qtyField = document.getElementById('qty');
+            if (qtyField) {
+              qtyField.addEventListener('keydown', handleKeyPress);
+            }
+            fetchExchangeRate();
+            setCursorFocus();
+          });
 
+      </script>
 
-      // from "Other Issue"
-      var bidSize = 0;
-      if (price <= 3000) {
-        bidSize = 1;
-      } else if (price <= 5000) {
-        bidSize = 5;
-      } else if (price <= 30000) {
-        bidSize = 10;
-      } else if (price <= 50000) {
-        bidSize = 50;
-      } else if (price <= 300000) {
-        bidSize = 100;
-      } else if (price <= 500000) {
-        bidSize = 500;
-      } else if (price <= 3000000) {
-        bidSize = 1000;
-      } else if (price <= 5000000) {
-        bidSize = 5000;
-      } else if (price <= 30000000) {
-        bidSize = 10000;
-      } else if (price <= 50000000) {
-        bidSize = 50000;
-      } else if (price > 50000000) {
-        bidSize = 100000;
-      }
-      
-      return bidSize;
-    }
-
-
-    function getCost(price, qty, bs) {
-      var consideration = price * qty;
-      var otherFee = getOtherFee(price, qty, bs);
-      if (bs == "buy"){                
-        var total = consideration + otherFee.total;
-      } else {
-        var total = consideration - otherFee.total;
-      }
-
-      return total;
-    }
-
-
-    function ceilToDecimalPlaces(num, decimalPlaces) {
-        const factor = Math.pow(10, decimalPlaces); // Scale the number
-        return Math.ceil(num * factor) / factor;   // Apply Math.ceil and scale back
-    }
-
-
-    function getOtherFee(price, qty, bs) {
-        // bs => reserved
-        // Rate
-        var commission_rate = 0.0008;  // 0.08%, minimum $80/order
-        var fixed_platform = 180;  // $180/order
-        var settlement = 40;      // $40/order
-        var otherFee = {};
-
-        otherFee.platform =  fixed_platform;
-        otherFee.settlement =  settlement;
-
-        // 0.08%, minimum $80/order
-        otherFee.commission = ceilToDecimalPlaces(commission_rate * (qty * price), 0);
-        
-
-        if (otherFee.commission < 80) {
-          otherFee.commission = 80; 
-        }
-
-        otherFee.total = otherFee.commission + otherFee.platform + otherFee.settlement; 
-
-        return otherFee;
-    }    
-    
-
-    function setCursorFocus() {
-      var inputField = document.getElementById("price");
-      inputField.focus();
-    }
-
-
-    function handleKeyPress(event) {
-      if (event.keyCode === 13) { // 13 is the key code for Enter
-        event.preventDefault(); // Prevent the default form submission
-        main();
-      }
-    }
-
-
-    function clearField(inputField) {     
-      inputField.value = '';
-    }
-
-
-
-
-
-  </script>
-
-
-  <style>
-  
-
-    .top-section {
-      height: 25vh; /* Adjust the height of the top section as needed */
-      overflow: auto;
-    }
-
-    .bottom-section {
-      height: 60vh; /* Adjust the height of the bottom section as needed */
-      overflow: auto;
-      
-    }
-
-
-    th:first-child {
-      position: sticky;
-      left: 5;
-      background-color: grey;
-      font-weight: bold;
-      z-index: 0;
-    }
-
-    
-    .table-container {
-      top: 500;
-      width: 100%;
-
-      height: 100px;
-      overflow: auto;
-    }
-
-
-    th,
-    td {
-      border: 1px solid black;
-      padding: 8px;
-      background-color: grey;      
-    }
-
-    th {
-      position: sticky;
-      top: 0;
-      background-color: grey;
-      
-    }
-
-    body {
-      background-color: lightgray;
-    }
-
-  </style>
-</head>
-<body>
-  <script>
-    // Call the setupForm function when the web page loads
-    window.addEventListener('load', init);
-  </script>
-  
-
-
-</body>
-</html>
+      </body>
+      </html>
